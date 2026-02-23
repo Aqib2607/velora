@@ -1,0 +1,132 @@
+{
+  "task": "Velora Backend Enterprise Validation Pass",
+  "objective": "Perform a full validation and defensive integrity audit of the Laravel backend before any deployment.",
+  "environment": "Local development (Docker or native)",
+  "validation_steps": [
+
+    {
+      "step": "Run Database Migrations",
+      "instructions": [
+        "Execute php artisan migrate:fresh --seed",
+        "Confirm all tables are created successfully",
+        "Verify foreign keys are active",
+        "Ensure strict mode is enabled in MySQL",
+        "Fail if any migration warnings occur"
+      ]
+    },
+
+    {
+      "step": "Run Automated Tests",
+      "instructions": [
+        "Execute php artisan test",
+        "Confirm 100% pass rate",
+        "Ensure tests cover:",
+        "  - Order creation",
+        "  - Ledger insert",
+        "  - Tenant scope isolation",
+        "  - Inventory decrement logic",
+        "  - Idempotency middleware"
+      ]
+    },
+
+    {
+      "step": "Verify Ledger DB Protection",
+      "instructions": [
+        "Confirm DB trigger exists blocking UPDATE on ledger_entries",
+        "Confirm DB trigger exists blocking DELETE on ledger_entries",
+        "Attempt manual SQL UPDATE on ledger_entries",
+        "Expect rejection",
+        "Attempt DELETE on ledger_entries",
+        "Expect rejection",
+        "Attempt unbalanced transaction insert",
+        "Expect failure"
+      ]
+    },
+
+    {
+      "step": "Test Idempotent Checkout",
+      "instructions": [
+        "Create order using unique idempotency key",
+        "Repeat same request with same key",
+        "Confirm second response returns identical stored response",
+        "Ensure no duplicate order is created",
+        "Check DB orders table to verify single record"
+      ]
+    },
+
+    {
+      "step": "Simulate Duplicate Stripe Webhook",
+      "instructions": [
+        "Send identical webhook event twice",
+        "Verify webhook_events table logs event_id",
+        "Ensure second event is ignored",
+        "Confirm no duplicate ledger entries",
+        "Confirm order state remains correct"
+      ]
+    },
+
+    {
+      "step": "Test Negative Inventory Protection",
+      "instructions": [
+        "Attempt to purchase quantity greater than available stock",
+        "Expect transaction rejection",
+        "Confirm inventory quantity never becomes negative",
+        "Check DB constraint enforcement"
+      ]
+    },
+
+    {
+      "step": "Test Cross-Tenant Access Violation",
+      "instructions": [
+        "Login as user from Tenant A",
+        "Attempt to fetch product belonging to Tenant B",
+        "Expect 403 or 404 response",
+        "Verify tenant global scope enforcement",
+        "Ensure no cross-tenant data leakage"
+      ]
+    },
+
+    {
+      "step": "Test Transaction Atomicity",
+      "instructions": [
+        "Simulate payment success but force ledger insert failure",
+        "Ensure entire DB transaction rolls back",
+        "Verify order status is not marked paid",
+        "Verify inventory not permanently locked"
+      ]
+    },
+
+    {
+      "step": "Performance Smoke Test",
+      "instructions": [
+        "Simulate 100 concurrent checkout requests",
+        "Confirm no race conditions",
+        "Verify no duplicate orders",
+        "Check average response time under 500ms locally"
+      ]
+    }
+  ],
+
+  "output_required": {
+    "format": "Structured Diagnostics Report",
+    "sections": [
+      "migration_status",
+      "test_results",
+      "ledger_protection_status",
+      "idempotency_validation",
+      "webhook_deduplication_status",
+      "inventory_protection_status",
+      "tenant_isolation_status",
+      "transaction_atomicity_status",
+      "performance_observations"
+    ]
+  },
+
+  "strict_rules": [
+    "Do not auto-fix errors",
+    "List all failures clearly",
+    "Show stack traces if any",
+    "Highlight security risks",
+    "Stop deployment if any critical validation fails"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "task": "Refactor frontend project to remove all references to 'lovable'",
+  "project_context": "Velora React frontend (Vite + Tailwind + Zustand + React Query)",
+  "objective": "Remove or replace all occurrences of the term 'lovable' from the frontend codebase and update them to production-ready Velora branding.",
+  "strict_rules": [
+    "Do NOT modify business logic",
+    "Do NOT change component behavior",
+    "Do NOT remove dependencies unless confirmed unused",
+    "Preserve build stability",
+    "Show diff preview before applying changes"
+  ],
+  "search_targets": [
+    "lovable",
+    "Lovable",
+    "LOVABLE"
+  ],
+  "replacement_strategy": {
+    "package_name": "Replace with 'velora-frontend'",
+    "environment_prefix": "Replace LOVABLE_* with VELORA_*",
+    "global_constants": "Replace LovableApp with VeloraApp",
+    "css_classes": "Replace lovable-* with velora-*",
+    "meta_tags": "Update site title and description to Velora",
+    "comments": "Replace Lovable mentions with Velora"
+  },
+  "files_to_scan": [
+    "package.json",
+    "vite.config.*",
+    "index.html",
+    ".env*",
+    "src/**/*",
+    "tailwind.config.*",
+    "README.md"
+  ],
+  "rename_operations": [
+    {
+      "if_file_or_folder_contains": "lovable",
+      "rename_to": "velora"
+    }
+  ],
+  "validation_after_refactor": [
+    "Run npm install to ensure dependency integrity",
+    "Run npm run build and confirm successful compilation",
+    "Run dev server and confirm no console errors",
+    "Search entire repo to confirm no remaining 'lovable' strings"
+  ],
+  "output_required": {
+    "format": "Refactor Report",
+    "sections": [
+      "files_modified",
+      "files_renamed",
+      "strings_replaced",
+      "build_status",
+      "console_warnings",
+      "remaining_references_if_any"
+    ]
+  }
+}

@@ -1,73 +1,80 @@
-# Welcome to your Lovable project
+# Velora
 
-## Project info
+Velora is a scalable, distributed, multi-tenant global marketplace platform engineered for high-throughput commerce with financial-grade integrity, combining B2C and B2B2C commerce.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## System Overview
 
-## How can I edit this code?
+- **Multi-tenant architecture**: `tenant_id` enforced globally across the shared database.
+- **Event-driven processing**: Built with a Kafka-ready architecture.
+- **Immutable double-entry ledger**: Financial transactions balance (debit = credit) with no UPDATE or DELETE allowed.
+- **Idempotent order processing**: Prevents duplicate charges.
+- **CQRS separation**: Writes handle by MySQL; Reads by OpenSearch.
+- **Escrow-based payment model**: For secure buyer-seller transactions.
 
-There are several ways of editing your application.
+## Core Modules
 
-**Use Lovable**
+- **Identity & SSO, Tenant Management**
+- **Catalog, Inventory, Cart, Order Processing**
+- **Payment, Ledger, Commission Engine**
+- **Refund/RMA, Payouts, Reporting**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## User Roles
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Buyer**: Tenant-scoped browsing, purchasing, and refunding.
+- **Seller / Seller Pro**: Cross-tenant catalog management, fulfillment, and analytics.
+- **Marketplace Admin**: Tenant-scoped seller moderation and commission management.
+- **Finance Admin**: Global ledger and payout oversight.
+- **Super Admin**: Full global system visibility.
 
-**Use your preferred IDE**
+## Tech Stack
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Frontend
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Framework**: React 18, Vite
+- **Styling**: Tailwind CSS, PostCSS (Support for Light/Dark themes, Custom UI system)
+- **Routing**: React Router v6
+- **State Management**: Zustand (client state), React Query (server state)
+- **API Client**: Axios
 
-Follow these steps:
+### Backend
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+- **Framework**: Laravel 11
+- **Auth**: Sanctum authentication
+- **Design**: Modular architecture, Policy-based RBAC
+
+### Data Layer & Infrastructure
+
+- **Database**: MySQL 8 (InnoDB, strict mode, partitioned monthly)
+- **Caching & Queue**: Redis (sessions, cart, queue)
+- **Search**: OpenSearch (read model, full-text search)
+- **Infrastructure**: AWS (RDS, ElastiCache, EKS, S3, CloudFront), Terraform, Docker containers
+- **Observability**: Prometheus, Grafana, ELK stack, Jaeger tracing
+- **CI/CD**: PHPUnit, PHPStan, Docker build to ECR, Rolling deployments
+
+## Constraints & Compliance
+
+- **PCI & GDPR**: Tokenized gateway, export & deletion support.
+- **Performance targets**: 99.9% Checkout uptime, <50ms Search latency, up to 1,500 Orders/min.
+- **Data Retention**: 7 years for financial and audit logs.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18+) & npm
+- PHP 8.2+ & Composer
+- MySQL 8, Redis
+
+### Installation & Execution
+
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install frontend dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the frontend development server
 npm run dev
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)

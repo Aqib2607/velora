@@ -1,0 +1,259 @@
+{
+  "project_name": "Velora Backend - Enterprise Production Build",
+  "objective": "Generate a production-safe, enterprise-grade Laravel backend for Velora, a multi-tenant distributed marketplace with escrow payments, immutable ledger, idempotent checkout, and event-driven order orchestration.",
+  "tech_stack": {
+    "framework": "Laravel 11",
+    "database": "MySQL 8 (InnoDB, strict mode enabled)",
+    "cache": "Redis",
+    "queue": "Redis (Phase 1) - Kafka ready abstraction",
+    "search": "OpenSearch (external read model)",
+    "auth": "Laravel Sanctum",
+    "infrastructure_target": "AWS (RDS, ElastiCache, EKS-ready)"
+  },
+  "architecture_style": "Modular Monolith (Service-Oriented Internals, Microservice Ready)",
+  "core_principles": [
+    "Strict tenant isolation using tenant_id global scopes",
+    "Immutable double-entry financial ledger",
+    "Idempotent order processing",
+    "Orchestrator-based Saga for distributed workflows",
+    "CQRS separation (MySQL write, OpenSearch read)",
+    "All financial operations wrapped in DB transactions",
+    "No raw payment data stored"
+  ],
+
+  "folder_structure_requirements": {
+    "app/Modules": [
+      "Identity",
+      "Tenant",
+      "Catalog",
+      "Inventory",
+      "Cart",
+      "Order",
+      "Payment",
+      "Ledger",
+      "Commission",
+      "Refund",
+      "Payout",
+      "Reporting",
+      "Admin"
+    ],
+    "app/Http/Middleware": [
+      "ResolveTenant",
+      "IdempotencyMiddleware"
+    ],
+    "app/Policies": "Policy-based RBAC enforcement required",
+    "app/Events": "Domain events per module",
+    "app/Listeners": "Event listeners for async handling",
+    "app/Jobs": "Queued jobs for background processes"
+  },
+
+  "tenant_resolution_contract": {
+    "resolution_method": "Header-based (X-Tenant-ID) with optional subdomain fallback",
+    "middleware_behavior": [
+      "Extract tenant_id",
+      "Validate tenant exists and active",
+      "Bind tenant to request lifecycle",
+      "Apply global scope automatically"
+    ],
+    "reject_if_missing": true
+  },
+
+  "database_contract": {
+    "engine": "InnoDB only",
+    "transaction_isolation": "REPEATABLE READ",
+    "monetary_precision": "DECIMAL(14,2)",
+    "strict_foreign_keys": true,
+    "tables_required": [
+      "tenants",
+      "users",
+      "roles",
+      "user_roles",
+      "seller_profiles",
+      "categories",
+      "products",
+      "skus",
+      "inventory",
+      "inventory_reservations",
+      "carts",
+      "cart_items",
+      "orders",
+      "order_items",
+      "payments",
+      "ledger_accounts",
+      "ledger_transactions",
+      "ledger_entries",
+      "commission_rules",
+      "commission_records",
+      "refunds",
+      "payouts",
+      "audit_logs",
+      "idempotency_keys",
+      "webhook_events"
+    ],
+    "indexes_required": [
+      "orders(tenant_id, created_at)",
+      "orders(idempotency_key)",
+      "ledger_entries(account_id, created_at)",
+      "products(tenant_id, status)",
+      "inventory(sku_id)"
+    ],
+    "constraints_required": [
+      "Unique idempotency_key per user + route",
+      "Inventory quantity_available >= 0",
+      "Ledger entries cannot be updated or deleted",
+      "Foreign keys enforced"
+    ]
+  },
+
+  "ledger_enforcement_rules": {
+    "immutable": true,
+    "double_entry_required": true,
+    "balance_validation": "Sum(debit) must equal Sum(credit) per transaction",
+    "db_trigger_required": true,
+    "no_update_delete": true,
+    "reversal_strategy": "Compensating entries only"
+  },
+
+  "idempotency_strategy": {
+    "middleware_required": true,
+    "storage_table": "idempotency_keys",
+    "fields": [
+      "key",
+      "user_id",
+      "route",
+      "response_hash",
+      "expires_at"
+    ],
+    "behavior": [
+      "Store first successful response",
+      "Return stored response for duplicate key",
+      "Expire keys after 24h"
+    ]
+  },
+
+  "order_saga_orchestration": {
+    "pattern": "Orchestrator-based",
+    "steps": [
+      "Validate cart",
+      "Soft reserve inventory",
+      "Create pending order",
+      "Create payment intent",
+      "On payment success:",
+      "  Confirm inventory",
+      "  Insert ledger entries",
+      "  Emit order.paid event",
+      "On failure:",
+      "  Release inventory",
+      "  Cancel order"
+    ],
+    "retry_policy": "Exponential backoff, max 5 retries",
+    "queue_required": true
+  },
+
+  "inventory_rules": {
+    "soft_lock_duration": "15 minutes",
+    "cleanup_job_frequency": "Every 1 minute",
+    "no_negative_inventory": true
+  },
+
+  "payment_integration": {
+    "primary_gateway": "Stripe Connect",
+    "requirements": [
+      "Signature validation on webhooks",
+      "Webhook event deduplication",
+      "Replay attack prevention",
+      "Idempotent webhook handling"
+    ],
+    "no_raw_card_data": true
+  },
+
+  "financial_rules": [
+    "Ledger entries only after confirmed payment",
+    "Refunds create compensating ledger entries",
+    "Payout requires zero active disputes",
+    "All financial writes inside DB transactions"
+  ],
+
+  "authentication_and_security": {
+    "auth_system": "Laravel Sanctum",
+    "token_storage": "HTTP-only secure cookies",
+    "rbac": "Policy-based authorization",
+    "rate_limiting": "Redis throttling",
+    "csrf_protection": true,
+    "form_request_validation_required": true,
+    "audit_logging_required": true
+  },
+
+  "api_structure": {
+    "base_path": "/api/v1",
+    "response_standard": {
+      "success": {
+        "status": "success",
+        "data": {}
+      },
+      "error": {
+        "status": "error",
+        "message": "",
+        "error_code": ""
+      }
+    },
+    "middleware_stack": [
+      "auth:sanctum",
+      "ResolveTenant",
+      "IdempotencyMiddleware",
+      "throttle:api"
+    ]
+  },
+
+  "audit_logging_contract": {
+    "log_fields": [
+      "user_id",
+      "tenant_id",
+      "entity_type",
+      "entity_id",
+      "old_value",
+      "new_value",
+      "ip_address",
+      "timestamp"
+    ],
+    "log_all_write_operations": true,
+    "retention_policy": "7 years"
+  },
+
+  "devops_requirements": {
+    "docker_required": true,
+    "kubernetes_ready": true,
+    "ci_pipeline_must_run": [
+      "PHPUnit tests",
+      "Migration tests",
+      "PHPStan max level",
+      "Security scan"
+    ],
+    "zero_downtime_deployments": "Rolling or Blue-Green"
+  },
+
+  "environment_variables_required": [
+    "APP_ENV",
+    "APP_KEY",
+    "DB_HOST",
+    "DB_DATABASE",
+    "DB_USERNAME",
+    "DB_PASSWORD",
+    "REDIS_HOST",
+    "STRIPE_KEY",
+    "STRIPE_SECRET",
+    "STRIPE_WEBHOOK_SECRET",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_BUCKET"
+  ],
+
+  "final_requirements": [
+    "All migrations must be provided",
+    "All models must include tenant global scope",
+    "All write operations must be validated",
+    "All financial flows must be transaction-safe",
+    "Code must be production-ready and clean",
+    "Project must be container-ready"
+  ]
+}
