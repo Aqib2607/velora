@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 
 // Layouts & Utility Components
 import MainLayout from "@/layouts/MainLayout";
+import PremiumLayout from "@/layouts/PremiumLayout";
 import SellerLayout from "@/layouts/SellerLayout";
 import AdminLayout from "@/layouts/AdminLayout";
 import SuspenseFallback from "@/components/routing/SuspenseFallback";
@@ -15,6 +16,7 @@ import ProtectedRoute from "@/components/routing/ProtectedRoute";
 
 // Core Pages
 const Index = lazy(() => import("@/pages/Index"));
+const PremiumHomePage = lazy(() => import("@/pages/PremiumHomePage"));
 const ProductDetailPage = lazy(() => import("@/pages/ProductDetailPage"));
 const CartPage = lazy(() => import("@/pages/CartPage"));
 const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
@@ -92,9 +94,9 @@ export const AppRouter = () => {
             <ScrollToTop />
             <Suspense fallback={<SuspenseFallback />}>
                 <Routes>
-                    {/* Public Top-Level Routes */}
-                    <Route element={<MainLayout />}>
-                        <Route index element={<Index />} />
+                    {/* Premium Routes with New Design */}
+                    <Route element={<PremiumLayout />}>
+                        <Route index element={<PremiumHomePage />} />
                         <Route path="product/:id" element={<ProductDetailPage />} />
                         <Route path="cart" element={<CartPage />} />
                         <Route path="checkout" element={<CheckoutPage />} />
@@ -104,9 +106,6 @@ export const AppRouter = () => {
                         <Route path="register" element={<LoginPage />} />
                         <Route path="orders" element={<OrdersPage />} />
                         <Route path="deals" element={<TodaysDealsPage />} />
-
-                        {/* Testing Route */}
-                        <Route path="route-test" element={<div>Test Route Works</div>} />
 
                         {/* Information & Legal Routes */}
                         <Route path="careers" element={<Careers />} />
@@ -151,6 +150,23 @@ export const AppRouter = () => {
                         <Route path="velora-reviews" element={<VeloraReviews />} />
                         <Route path="velora-devices" element={<VeloraDevices />} />
                         <Route path="velora-subscriptions" element={<VeloraSubscriptions />} />
+                    </Route>
+
+                    {/* Public Top-Level Routes (Legacy) */}
+                    <Route path="/legacy" element={<MainLayout />}>
+                        <Route index element={<Index />} />
+                        <Route path="product/:id" element={<ProductDetailPage />} />
+                        <Route path="cart" element={<CartPage />} />
+                        <Route path="checkout" element={<CheckoutPage />} />
+                        <Route path="search" element={<SearchPage />} />
+                        <Route path="category/:slug" element={<CategoryPage />} />
+                        <Route path="login" element={<LoginPage />} />
+                        <Route path="register" element={<LoginPage />} />
+                        <Route path="orders" element={<OrdersPage />} />
+                        <Route path="deals" element={<TodaysDealsPage />} />
+
+                        {/* Testing Route */}
+                        <Route path="route-test" element={<div>Test Route Works</div>} />
                     </Route>
 
                     {/* Secure Seller Area */}
