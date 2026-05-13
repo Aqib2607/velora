@@ -1,29 +1,39 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuthStore } from '@/store/useAuthStore';
+import type { UserRole } from '@/store/useAuthStore';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
-    role?: 'seller' | 'admin';
+    role?: UserRole;
 }
 
 /**
- * Wraps routes that require specific authentication or authorization logic.
- * Currently utilizes placeholder logic pending global Auth context implementation.
+ * Guards routes requiring authentication and/or specific roles.
+ * 
+ * - Redirects unauthenticated users to /login with return URL.
+ * - Redirects unauthorized users (wrong role) to homepage.
+ * - Shows a loading spinner while auth state is rehydrating.
  */
 const ProtectedRoute = ({ children, role }: ProtectedRouteProps) => {
-    // TODO: Replace with absolute authentication logic (e.g., Zustand authStore or React Query)
-    const isAuthenticated = true;
-    const userRole: string = 'admin'; // 'guest', 'seller', 'admin'
+    const { isAuthenticated, isLoading, hasRole } = useAuthStore();
+    const location = useLocation();
 
+    // While auth state is rehydrating from localStorage, show nothing to prevent flash
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+        );
+    }
+
+    // Not authenticated — redirect to login with return URL
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/login" state={{ from: location.pathname }} replace />;
     }
 
-    // Very basic RBAC fallback
-    if (role === 'admin' && userRole !== 'admin') {
-        return <Navigate to="/" replace />;
-    }
-
-    if (role === 'seller' && userRole !== 'seller' && userRole !== 'admin') {
+    // Role check — admin has universal access, seller can access seller routes
+    if (role && !hasRole(role)) {
         return <Navigate to="/" replace />;
     }
 

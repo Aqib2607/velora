@@ -44,7 +44,7 @@ class RefundController extends Controller
 
     public function approve(Refund $refund): JsonResponse
     {
-        $this->authorize('admin');
+        $this->authorize('approve', $refund);
         $this->refunds->approve($refund);
 
         return response()->json(['status' => 'success', 'data' => $refund->fresh()]);
@@ -52,7 +52,7 @@ class RefundController extends Controller
 
     public function reject(Request $request, Refund $refund): JsonResponse
     {
-        $this->authorize('admin');
+        $this->authorize('reject', $refund);
         $reason = $request->validate(['reason' => 'required|string'])['reason'];
         $this->refunds->reject($refund, $reason);
 

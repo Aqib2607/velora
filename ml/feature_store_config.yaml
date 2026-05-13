@@ -1,0 +1,101 @@
+project: velora
+registry: s3://velora-feature-store/registry
+provider: gcp
+online_store:
+  type: redis
+  connection_string: redis://redis-service:6379
+offline_store:
+  type: bigquery
+  project_id: velora-gcp-prod
+  dataset: feature_store
+  location: us-central1
+feature_store_yaml_location: ml/feature_store_config.yaml
+
+entities:
+  - name: merchant
+    join_keys:
+      - merchant_id
+  - name: customer
+    join_keys:
+      - customer_id
+  - name: transaction
+    join_keys:
+      - transaction_id
+  - name: product
+    join_keys:
+      - product_id
+
+features:
+  # Merchant features
+  merchant_features:
+    - merchant_account_age_days
+    - merchant_total_transactions
+    - merchant_avg_transaction_amount
+    - merchant_monthly_volume
+    - merchant_chargeback_rate
+    - merchant_refund_rate
+    - merchant_dispute_rate
+    - merchant_tier
+    - merchant_country
+    - merchant_category
+    - merchant_account_status
+    - merchant_kyc_verified
+    - merchant_fraud_score
+    - merchant_trust_score
+
+  # Customer features
+  customer_features:
+    - customer_account_age_days
+    - customer_total_purchases
+    - customer_lifetime_value
+    - customer_avg_order_value
+    - customer_purchase_frequency_7d
+    - customer_purchase_frequency_30d
+    - customer_return_rate
+    - customer_chargeback_history
+    - customer_verification_status
+    - customer_country
+    - customer_device_consistency
+    - customer_email_verified
+    - customer_phone_verified
+
+  # Transaction features
+  transaction_features:
+    - transaction_amount
+    - transaction_currency
+    - transaction_payment_method
+    - transaction_merchant_category
+    - transaction_is_first_time
+    - transaction_merchant_chargeback_rate
+    - transaction_customer_purchase_frequency
+    - transaction_velocity_1h
+    - transaction_velocity_24h
+    - transaction_amount_deviation_from_avg
+    - transaction_time_of_day
+    - transaction_device_geolocation_match
+
+  # Product features
+  product_features:
+    - product_category
+    - product_subcategory
+    - product_price
+    - product_refund_rate
+    - product_chargeback_rate
+    - product_fraud_indicator
+    - product_sales_velocity
+
+model_configs:
+  fraud_detection:
+    training_data_window: 90d
+    refresh_interval: 1d
+    online_store_ttl: 3600
+  
+  chargeback_prediction:
+    training_data_window: 180d
+    refresh_interval: 7d
+    online_store_ttl: 86400
+  
+  merchant_risk_scoring:
+    training_data_window: 180d
+    refresh_interval: 24h
+    online_store_ttl: 86400

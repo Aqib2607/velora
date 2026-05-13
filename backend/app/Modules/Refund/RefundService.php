@@ -43,11 +43,16 @@ class RefundService
 
     /**
      * Approve and process the refund via Stripe + ledger compensating entries.
+     *
+     * Uses the original order's currency snapshot to ensure the refund
+     * is recorded with the exact same exchange rate as the original purchase.
      */
     public function approve(Refund $refund): void
     {
         DB::transaction(function () use ($refund) {
+            $refund->loadMissing(['payment', 'order']);
             $payment = $refund->payment;
+            $order   = $refund->order;
 
             // Issue Stripe refund
             $stripeRefund = $this->payment->refund(
@@ -61,20 +66,22 @@ class RefundService
                 'processed_at'     => now(),
             ]);
 
-            // Post compensating ledger entries
+            // Post compensating ledger entries using the original order's currency snapshot
             $this->ledger->post(
                 "refund_{$refund->id}",
-                "Refund for order #{$refund->order->order_number}",
+                "Refund for order #{$order->order_number}",
                 [
                     ['account_code' => 'REVENUE', 'type' => 'debit',  'amount' => $refund->amount, 'memo' => 'Refund reversal'],
                     ['account_code' => 'CASH',    'type' => 'credit', 'amount' => $refund->amount, 'memo' => 'Refund to customer'],
                 ],
-                $refund->tenant_id
+                $refund->tenant_id,
+                $order->currency_code ?? 'USD',
+                (float) ($order->exchange_rate_snapshot ?? 1.0)
             );
 
             // Update order status if fully refunded
-            if ($refund->amount >= $refund->order->total) {
-                $refund->order->update(['status' => 'refunded']);
+            if ($refund->amount >= $order->total) {
+                $order->update(['status' => 'refunded']);
             }
         });
     }

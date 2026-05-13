@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: velora-backend
+  labels:
+    app: velora-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: velora-backend
+  template:
+    metadata:
+      labels:
+        app: velora-backend
+    spec:
+      containers:
+      - name: velora-backend
+        image: velora/backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9000
+        envFrom:
+        - configMapRef:
+            name: velora-config
+        - secretRef:
+            name: velora-secrets
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        livenessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: velora-backend
+spec:
+  selector:
+    app: velora-backend
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: velora-backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: velora-backend
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

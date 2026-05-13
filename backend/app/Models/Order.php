@@ -26,16 +26,20 @@ class Order extends Model
         'total',
         'shipping_address',
         'billing_address',
+        'currency_code',
+        'exchange_rate_snapshot',
+        'region_code',
         'notes',
         'paid_at',
     ];
 
     protected $casts = [
-        'shipping_address' => 'array',
-        'billing_address'  => 'array',
-        'paid_at'          => 'datetime',
-        'total'            => 'decimal:2',
-        'subtotal'         => 'decimal:2',
+        'shipping_address'       => 'array',
+        'billing_address'        => 'array',
+        'paid_at'                => 'datetime',
+        'total'                  => 'decimal:2',
+        'subtotal'               => 'decimal:2',
+        'exchange_rate_snapshot'  => 'decimal:6',
     ];
 
     public function tenant(): BelongsTo

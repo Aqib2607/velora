@@ -14,11 +14,16 @@ class LedgerService
      * Post a balanced double-entry transaction.
      * Entries must have equal debit and credit totals.
      *
+     * Currency is passed through from the calling context (order, refund, etc.)
+     * and stored immutably on each entry. The ledger itself remains balanced
+     * in whatever currency the transaction specifies — cross-currency netting
+     * is handled at the reporting layer.
+     *
      * @param  array{account_code: string, type: string, amount: float, memo?: string}[]  $entries
      */
-    public function post(string $reference, string $description, array $entries, int $tenantId): LedgerTransaction
+    public function post(string $reference, string $description, array $entries, int $tenantId, string $currency = 'USD', float $exchangeRate = 1.0): LedgerTransaction
     {
-        return DB::transaction(function () use ($reference, $description, $entries, $tenantId) {
+        return DB::transaction(function () use ($reference, $description, $entries, $tenantId, $currency, $exchangeRate) {
             // Validate balance before writing
             $debits  = array_sum(array_column(array_filter($entries, fn($e) => $e['type'] === 'debit'), 'amount'));
             $credits = array_sum(array_column(array_filter($entries, fn($e) => $e['type'] === 'credit'), 'amount'));
@@ -47,15 +52,21 @@ class LedgerService
                     'account_id'     => $account->id,
                     'type'           => $entry['type'],
                     'amount'         => $entry['amount'],
+                    'currency'       => $currency,
+                    'exchange_rate'  => $exchangeRate,
                     'memo'           => $entry['memo'] ?? null,
                 ]);
 
-                // Update account running balance
-                if ($entry['type'] === 'debit') {
-                    $account->increment('balance', $entry['amount']);
+                // Update account running balance with pessimistic lock
+                $isNaturalDebit = in_array($account->type, ['asset', 'expense']);
+
+                if ($isNaturalDebit) {
+                    $account->balance += ($entry['type'] === 'debit' ? $entry['amount'] : -$entry['amount']);
                 } else {
-                    $account->decrement('balance', $entry['amount']);
+                    $account->balance += ($entry['type'] === 'credit' ? $entry['amount'] : -$entry['amount']);
                 }
+
+                $account->save();
             }
 
             return $transaction;
@@ -64,10 +75,16 @@ class LedgerService
 
     /**
      * Create compensating (reversal) entries for a given transaction.
+     * Preserves the original currency and exchange rate for audit integrity.
      */
     public function reverse(LedgerTransaction $original, string $reason): LedgerTransaction
     {
         $original->loadMissing('entries.account');
+
+        // Extract currency from original entries (all entries in a transaction share the same currency)
+        $originalCurrency     = $original->entries->first()?->currency ?? 'USD';
+        $originalExchangeRate = $original->entries->first()?->exchange_rate ?? 1.0;
+
         $entries = [];
         foreach ($original->entries as $entry) {
             $entries[] = [
@@ -82,7 +99,9 @@ class LedgerService
             "reversal_of_{$original->reference}",
             "Reversal: {$original->description} — {$reason}",
             $entries,
-            $original->tenant_id
+            $original->tenant_id,
+            $originalCurrency,
+            $originalExchangeRate
         );
 
         $original->update(['status' => 'reversed']);

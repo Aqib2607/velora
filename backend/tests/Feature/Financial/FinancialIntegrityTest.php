@@ -6,10 +6,10 @@ use App\Models\LedgerAccount;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\IdempotencyKey;
-use App\Services\LedgerService;
+use App\Modules\Ledger\LedgerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use Exception;
+use RuntimeException;
 
 class FinancialIntegrityTest extends TestCase
 {
@@ -22,8 +22,9 @@ class FinancialIntegrityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->ledgerService = new LedgerService();
-        $this->tenant = Tenant::create(['name' => 'Test Tenant', 'slug' => 'test-tenant', 'domain' => 'test.com']);
+        $this->tenant = Tenant::create(['name' => 'Test Tenant', 'slug' => 'test-tenant', 'domain' => 'test.com', 'status' => 'active', 'plan' => 'standard']);
+        app()->instance('tenant', $this->tenant);
+        $this->ledgerService = app(LedgerService::class);
         $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
     }
 
@@ -45,17 +46,17 @@ class FinancialIntegrityTest extends TestCase
         ]);
 
         // Attempting an unbalanced transaction should fail
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Financial integrity violation');
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('unbalanced');
 
-        $this->ledgerService->recordTransaction(
-            $this->tenant->id,
+        $this->ledgerService->post(
             'TEST_001',
             'Unbalanced test',
             [
-                ['account_id' => $cashAccount->id, 'type' => 'debit', 'amount' => 100.00],
-                ['account_id' => $revenueAccount->id, 'type' => 'credit', 'amount' => 99.00], // Off by 1.00
-            ]
+                ['account_code' => '1001', 'type' => 'debit', 'amount' => 100.00],
+                ['account_code' => '4001', 'type' => 'credit', 'amount' => 99.00], // Off by 1.00
+            ],
+            $this->tenant->id
         );
     }
 
@@ -75,27 +76,25 @@ class FinancialIntegrityTest extends TestCase
             'code' => '4001'
         ]);
 
-        $this->ledgerService->recordTransaction(
-            $this->tenant->id,
+        $this->ledgerService->post(
             'SALE_001',
             'Balanced sale',
             [
-                ['account_id' => $cashAccount->id, 'type' => 'debit', 'amount' => 150.00],
-                ['account_id' => $revenueAccount->id, 'type' => 'credit', 'amount' => 150.00],
-            ]
+                ['account_code' => '1001', 'type' => 'debit', 'amount' => 150.00],
+                ['account_code' => '4001', 'type' => 'credit', 'amount' => 150.00],
+            ],
+            $this->tenant->id
         );
 
-        $this->assertEquals(150.00, $cashAccount->refresh()->balance);
-        $this->assertEquals(150.00, $revenueAccount->refresh()->balance);
+        // Asset (Cash): debit increases
+        $this->assertEquals(150.00, (float) $cashAccount->refresh()->balance);
+        // Revenue: credit increases
+        $this->assertEquals(150.00, (float) $revenueAccount->refresh()->balance);
     }
 
     /** @test */
-    public function test_it_enforces_usd_only_on_ledger_entries()
+    public function test_multi_currency_entries_store_correctly()
     {
-        // This is a lower-level check since the service hardcodes 'USD'
-        // But we can verify through the Model if any attempt to set another currency fails 
-        // (if we added a setter check or relied on the DB trigger/constraint)
-
         $cashAccount = LedgerAccount::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Cash',
@@ -103,15 +102,29 @@ class FinancialIntegrityTest extends TestCase
             'code' => '1001'
         ]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
-
-        \App\Models\LedgerEntry::create([
+        $revenueAccount = LedgerAccount::create([
             'tenant_id' => $this->tenant->id,
-            'transaction_id' => 1, // Placeholder
-            'account_id' => $cashAccount->id,
-            'type' => 'debit',
-            'amount' => 100,
-            'currency' => 'EUR', // Attempt to bypass USD rule
+            'name' => 'Revenue',
+            'type' => 'revenue',
+            'code' => '4001'
         ]);
+
+        $this->ledgerService->post(
+            'EUR_ORDER_001',
+            'EUR transaction',
+            [
+                ['account_code' => '1001', 'type' => 'debit',  'amount' => 92.00],
+                ['account_code' => '4001', 'type' => 'credit', 'amount' => 92.00],
+            ],
+            $this->tenant->id,
+            'EUR',
+            0.92
+        );
+
+        $entries = \App\Models\LedgerEntry::all();
+        foreach ($entries as $entry) {
+            $this->assertEquals('EUR', $entry->currency);
+            $this->assertEquals(0.92, (float) $entry->exchange_rate);
+        }
     }
 }

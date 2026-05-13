@@ -6,6 +6,7 @@ import AccountMenu from "./AccountMenu";
 import CartIcon from "./CartIcon";
 import SecondaryNav from "./SecondaryNav";
 import ThemeToggle from "../ThemeToggle";
+import NotificationBell from "./NotificationBell";
 import { useTranslation } from "react-i18next";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { useEffect, useState } from "react";
@@ -77,6 +78,8 @@ const Navbar = () => {
                     </div>
 
                     <AccountMenu />
+                    
+                    <NotificationBell />
 
                     <Link
                         to="/info/orders"

@@ -1,0 +1,210 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-inference-service
+  namespace: velora-prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ml-inference
+  template:
+    metadata:
+      labels:
+        app: ml-inference
+        tier: ml
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ml-inference
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: inference-api
+        image: registry.velora.io/ml-inference:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: "gs://velora-mlflow"
+        - name: MLFLOW_REGISTRY_URI
+          value: "gs://velora-ml-registry"
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: FEAST_REPO_PATH
+          value: "/app/ml/feature_store_config.yaml"
+        resources:
+          requests:
+            cpu: 2
+            memory: 4Gi
+          limits:
+            cpu: 4
+            memory: 8Gi
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        volumeMounts:
+        - name: model-cache
+          mountPath: /models
+        - name: config
+          mountPath: /app/ml
+      volumes:
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: ml-models-pvc
+      - name: config
+        configMap:
+          name: ml-feature-store-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-inference-service
+  namespace: velora-prod
+spec:
+  selector:
+    app: ml-inference
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ml-inference-hpa
+  namespace: velora-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ml-inference-service
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ml-model-retraining
+  namespace: velora-prod-infra
+spec:
+  schedule: "0 2 * * *"  # 2 AM UTC daily
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: ml-training-sa
+          containers:
+          - name: ml-training
+            image: registry.velora.io/ml-training:latest
+            imagePullPolicy: Always
+            env:
+            - name: MLFLOW_TRACKING_URI
+              value: "gs://velora-mlflow"
+            - name: MLFLOW_REGISTRY_URI
+              value: "gs://velora-ml-registry"
+            - name: GCP_PROJECT_ID
+              value: "velora-gcp-prod"
+            resources:
+              requests:
+                cpu: 4
+                memory: 16Gi
+              limits:
+                cpu: 8
+                memory: 32Gi
+            volumeMounts:
+            - name: models
+              mountPath: /models
+          volumes:
+          - name: models
+            persistentVolumeClaim:
+              claimName: ml-models-pvc
+          restartPolicy: OnFailure
+          nodeSelector:
+            workload-type: ml-training
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-models-pvc
+  namespace: velora-prod
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: fast-storage
+  resources:
+    requests:
+      storage: 500Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ml-feature-store-config
+  namespace: velora-prod
+data:
+  feature_store_config.yaml: |
+    project: velora
+    registry: gs://velora-feature-store/registry
+    provider: gcp
+    online_store:
+      type: redis
+      connection_string: redis://redis-service:6379
+    offline_store:
+      type: bigquery
+      project_id: velora-gcp-prod
+      dataset: feature_store

@@ -78,5 +78,27 @@
         "place_order": "Place Order",
         "order_placed": "Order Placed!",
         "thank_you": "Thank you for your purchase. Your order is being processed."
+    },
+    "seller": {
+        "dashboard": "Seller Dashboard",
+        "products": "Products",
+        "orders": "Orders",
+        "analytics": "Analytics",
+        "payouts": "Payouts",
+        "settings": "Settings & API Keys",
+        "add_product": "Add Product",
+        "revenue": "Revenue",
+        "commission": "Commission"
+    },
+    "admin": {
+        "dashboard": "Admin Dashboard",
+        "sellers": "Seller Management",
+        "orders": "Order Management",
+        "commission": "Commission Rules",
+        "audit_logs": "Audit Logs",
+        "tenants": "Tenant Management",
+        "approve": "Approve",
+        "reject": "Reject",
+        "suspend": "Suspend"
     }
 }

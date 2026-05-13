@@ -42,10 +42,19 @@ class OrderController extends Controller
             ->with('items.sku.product.sellerProfile')
             ->firstOrFail();
 
+        $validated = $request->validated();
+
+        $currencyData = [
+            'currency_code' => $validated['currency_code'] ?? 'USD',
+            'exchange_rate'  => $validated['exchange_rate'] ?? 1.0,
+            'region_code'    => $validated['region_code'] ?? null,
+        ];
+
         $result = $this->saga->initiateCheckout(
             $cart,
-            $request->validated(),
-            app('tenant')->id
+            $validated,
+            app('tenant')->id,
+            $currencyData
         );
 
         return response()->json(['status' => 'success', 'data' => $result], 201);

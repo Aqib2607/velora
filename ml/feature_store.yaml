@@ -1,0 +1,38 @@
+project: velora_feature_store
+registry: data/registry.db
+provider: local
+online_store:
+    type: redis
+    connection_string: "redis:6379"
+offline_store:
+    type: file
+    file_path: data/online_store.db
+
+---
+# feature_defs.py
+from datetime import timedelta
+from feast import Entity, FeatureView, Field, FileSource
+from feast.types import Float32, Int32, String
+
+user = Entity(name="user_id", join_keys=["user_id"])
+product = Entity(name="product_id", join_keys=["product_id"])
+
+user_behavior_source = FileSource(
+    name="user_behavior",
+    path="data/user_behavior.parquet",
+    timestamp_field="event_timestamp",
+)
+
+user_behavior_fv = FeatureView(
+    name="user_behavior_stats",
+    entities=[user],
+    ttl=timedelta(days=7),
+    schema=[
+        Field(name="view_count_7d", dtype=Int32),
+        Field(name="purchase_count_7d", dtype=Int32),
+        Field(name="avg_order_value", dtype=Float32),
+    ],
+    online=True,
+    source=user_behavior_source,
+    tags={"team": "recommendations"},
+)

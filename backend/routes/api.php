@@ -48,6 +48,12 @@ Route::prefix('v1')->middleware(['resolve.tenant', 'throttle:api'])->group(funct
     Route::get('currencies', [CurrencyController::class, 'index']);
     Route::get('deals',      [DealController::class, 'index']);
 
+    // Search (Public) - Cached for 60s
+    Route::middleware('cache.api')->group(function () {
+        Route::get('search',              [App\Http\Controllers\SearchController::class, 'index']);
+        Route::get('search/autocomplete', [App\Http\Controllers\SearchController::class, 'autocomplete']);
+    });
+
     // Stripe webhook — public but signature-validated
     Route::post('webhooks/stripe', [WebhookController::class, 'stripe'])
         ->withoutMiddleware(['throttle:api']);
@@ -149,10 +155,26 @@ Route::prefix('v1')->middleware([
         Route::get('status', [SellerApplicationController::class, 'status']);
     });
 
+    // ── Notifications
+    Route::prefix('notifications')->group(function () {
+        Route::get('/',              [App\Http\Controllers\NotificationController::class, 'index']);
+        Route::get('/unread-count',  [App\Http\Controllers\NotificationController::class, 'unreadCount']);
+        Route::post('/mark-all-read',[App\Http\Controllers\NotificationController::class, 'markAllRead']);
+        Route::post('/{notification}/mark-read', [App\Http\Controllers\NotificationController::class, 'markRead']);
+    });
+
     // ── Admin
     Route::prefix('admin')->group(function () {
         Route::get('users',   [AdminController::class, 'users']);
         Route::get('orders',  [AdminController::class, 'orders']);
         Route::get('reports', [AdminController::class, 'reports']);
+    });
+
+    // ── Seller Dashboard (Internal API)
+    Route::prefix('seller-dashboard')->group(function () {
+        Route::get('stats',     [App\Http\Controllers\SellerController::class, 'stats']);
+        Route::get('products',  [App\Http\Controllers\SellerController::class, 'products']);
+        Route::get('orders',    [App\Http\Controllers\SellerController::class, 'orders']);
+        Route::get('payouts',   [App\Http\Controllers\SellerController::class, 'payouts']);
     });
 });

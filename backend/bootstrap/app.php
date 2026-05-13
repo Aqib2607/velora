@@ -16,10 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         // Register middleware aliases
+        $middleware->append(\App\Http\Middleware\StructuredLogging::class);
         $middleware->alias([
             'resolve.tenant' => \App\Http\Middleware\ResolveTenant::class,
             'idempotency'    => \App\Http\Middleware\IdempotencyMiddleware::class,
             'audit.log'      => \App\Http\Middleware\AuditLogMiddleware::class,
+            'cache.api'      => \App\Http\Middleware\CacheApiResponse::class,
         ]);
 
         // Sanctum stateful domains (for SPA / cookie auth)

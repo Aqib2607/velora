@@ -26,15 +26,22 @@ class OrderSagaOrchestrator
 
     /**
      * Step 1-4: Initiate checkout — validate cart, reserve inventory, create order, create payment intent.
+     *
+     * @param array $addressData  Must contain 'shipping' and optionally 'billing'
+     * @param array $currencyData Optional: ['currency_code' => 'BDT', 'exchange_rate' => 110.50, 'region_code' => 'BD']
      */
-    public function initiateCheckout(Cart $cart, array $addressData, int $tenantId): array
+    public function initiateCheckout(Cart $cart, array $addressData, int $tenantId, array $currencyData = []): array
     {
-        return DB::transaction(function () use ($cart, $addressData, $tenantId) {
+        return DB::transaction(function () use ($cart, $addressData, $tenantId, $currencyData) {
             $cart->load('items.sku.inventory');
 
             if ($cart->items->isEmpty()) {
                 throw new RuntimeException('Cart is empty.');
             }
+
+            $currencyCode  = $currencyData['currency_code'] ?? 'USD';
+            $exchangeRate  = (float) ($currencyData['exchange_rate'] ?? 1.0);
+            $regionCode    = $currencyData['region_code'] ?? null;
 
             $reservations = [];
             $orderItems   = [];
@@ -63,19 +70,22 @@ class OrderSagaOrchestrator
                 ];
             }
 
-            // Step 3: Create pending order
+            // Step 3: Create pending order with immutable currency snapshot
             $order = Order::create([
-                'tenant_id'        => $tenantId,
-                'user_id'          => $cart->user_id,
-                'order_number'     => 'ORD-' . strtoupper(Str::random(10)),
-                'status'           => 'payment_pending',
-                'subtotal'         => $subtotal,
-                'tax'              => 0,
-                'shipping'         => 0,
-                'discount'         => 0,
-                'total'            => $subtotal,
-                'shipping_address' => $addressData['shipping'] ?? null,
-                'billing_address'  => $addressData['billing'] ?? null,
+                'tenant_id'              => $tenantId,
+                'user_id'                => $cart->user_id,
+                'order_number'           => 'ORD-' . strtoupper(Str::random(10)),
+                'status'                 => 'payment_pending',
+                'subtotal'               => $subtotal,
+                'tax'                    => 0,
+                'shipping'               => 0,
+                'discount'               => 0,
+                'total'                  => $subtotal,
+                'currency_code'          => $currencyCode,
+                'exchange_rate_snapshot' => $exchangeRate,
+                'region_code'            => $regionCode,
+                'shipping_address'       => $addressData['shipping'] ?? null,
+                'billing_address'        => $addressData['billing'] ?? null,
             ]);
 
             foreach ($orderItems as $item) {
@@ -87,7 +97,7 @@ class OrderSagaOrchestrator
                 $reservation->update(['order_reference' => $order->order_number]);
             }
 
-            // Step 4: Create Stripe PaymentIntent
+            // Step 4: Create Stripe PaymentIntent (always in order's currency)
             $paymentIntent = $this->payment->createIntent($order, $tenantId);
 
             // Mark cart as ordered
@@ -103,6 +113,9 @@ class OrderSagaOrchestrator
 
     /**
      * Step 5: On payment success — confirm inventory, post ledger entries, emit OrderPaid event.
+     *
+     * Ledger entries use the order's immutable currency snapshot to ensure
+     * financial records match the exact exchange rate at time of purchase.
      */
     public function onPaymentSuccess(Order $order, string $paymentIntentId, int $tenantId): void
     {
@@ -122,15 +135,17 @@ class OrderSagaOrchestrator
                 'paid_at' => now(),
             ]);
 
-            // Post ledger entries (escrow pattern)
+            // Post ledger entries using order's immutable currency snapshot
             $this->ledger->post(
                 "order_{$order->id}",
                 "Payment received for order #{$order->order_number}",
                 [
                     ['account_code' => 'CASH',    'type' => 'debit',  'amount' => $order->total, 'memo' => 'Customer payment'],
-                    ['account_code' => 'REVENUE',  'type' => 'credit', 'amount' => $order->total, 'memo' => 'Sales revenue'],
+                    ['account_code' => 'REVENUE', 'type' => 'credit', 'amount' => $order->total, 'memo' => 'Sales revenue'],
                 ],
-                $tenantId
+                $tenantId,
+                $order->currency_code,
+                (float) $order->exchange_rate_snapshot
             );
 
             // Calculate commissions per order item

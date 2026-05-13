@@ -1,0 +1,307 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replication-config
+  namespace: velora-prod-data
+data:
+  postgresql.conf.append: |
+    # Replication settings
+    wal_level = logical
+    max_wal_senders = 10
+    max_replication_slots = 10
+    wal_keep_size = 10GB
+    
+    # Logical replication
+    logical_decoding_work_mem = 64MB
+    logical_decoding_buffers = 512MB
+    
+    # Publication/Subscription
+    max_logical_replication_workers = 8
+    max_parallel_apply_workers = 4
+    max_sync_commit_delay = 0
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-primary
+  namespace: velora-prod-data
+spec:
+  selector:
+    app: postgres-primary
+  type: LoadBalancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: velora-prod-data
+spec:
+  serviceName: postgres-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-primary
+  template:
+    metadata:
+      labels:
+        app: postgres-primary
+        region: us-central
+    spec:
+      nodeSelector:
+        region: us-central
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: POSTGRES_INITDB_ARGS
+          value: "-c max_connections=500"
+        resources:
+          requests:
+            cpu: 8
+            memory: 32Gi
+          limits:
+            cpu: 16
+            memory: 64Gi
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: replication-config
+          mountPath: /etc/postgresql/conf.d
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: replication-config
+        configMap:
+          name: postgres-replication-config
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "fast-storage"
+      resources:
+        requests:
+          storage: 500Gi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replica-eu
+  namespace: velora-prod-data
+spec:
+  serviceName: postgres-replica-eu
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-replica-eu
+  template:
+    metadata:
+      labels:
+        app: postgres-replica-eu
+        region: eu-west
+    spec:
+      nodeSelector:
+        region: eu-west
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: PGUSER
+          value: replication
+        resources:
+          requests:
+            cpu: 8
+            memory: 32Gi
+          limits:
+            cpu: 16
+            memory: 64Gi
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: replication-config
+          mountPath: /etc/postgresql/conf.d
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      volumes:
+      - name: replication-config
+        configMap:
+          name: postgres-replication-config
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "fast-storage"
+      resources:
+        requests:
+          storage: 500Gi
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-logical-replication
+  namespace: velora-prod-data
+spec:
+  template:
+    spec:
+      serviceAccountName: db-setup-sa
+      containers:
+      - name: setup
+        image: postgres:15-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          #!/bin/sh
+          set -e
+          
+          echo "Setting up logical replication..."
+          
+          # Wait for primary
+          until pg_isready -h postgres-primary -p 5432; do
+            echo "Waiting for primary..."
+            sleep 2
+          done
+          
+          # Connect to primary and create publication
+          psql -h postgres-primary -U postgres -d postgres << 'SQL'
+            -- Create publication on primary
+            CREATE PUBLICATION all_tables FOR ALL TABLES;
+            
+            -- Create replication slots
+            SELECT pg_create_logical_replication_slot('eu_slot', 'pgoutput');
+            SELECT pg_create_logical_replication_slot('asia_slot', 'pgoutput');
+            
+            -- Create replication user if not exists
+            CREATE USER replication WITH REPLICATION ENCRYPTED PASSWORD 'replication_password';
+            GRANT USAGE ON SCHEMA public TO replication;
+            GRANT CREATE ON DATABASE postgres TO replication;
+          SQL
+          
+          echo "Logical replication setup complete"
+      restartPolicy: Never
+  backoffLimit: 3
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: subscription-setup
+  namespace: velora-prod-data
+data:
+  subscribe-eu.sql: |
+    CREATE SUBSCRIPTION eu_subscription
+      CONNECTION 'host=postgres-primary port=5432 user=replication password=replication_password dbname=postgres'
+      PUBLICATION all_tables
+      WITH (copy_data = true, synchronous_commit = local);
+  
+  subscribe-asia.sql: |
+    CREATE SUBSCRIPTION asia_subscription
+      CONNECTION 'host=postgres-replica-asia port=5432 user=replication password=replication_password dbname=postgres'
+      PUBLICATION all_tables
+      WITH (copy_data = true, synchronous_commit = local);
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica-eu
+  namespace: velora-prod-data
+spec:
+  selector:
+    app: postgres-replica-eu
+  type: LoadBalancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica-asia
+  namespace: velora-prod-data
+spec:
+  selector:
+    app: postgres-replica-asia
+  type: LoadBalancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-replication-monitor
+  namespace: velora-prod-data
+spec:
+  selector:
+    matchLabels:
+      app: postgres-monitoring
+  endpoints:
+  - port: metrics
+    interval: 30s
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: velora-prod-data
+type: Opaque
+stringData:
+  password: "$(echo $POSTGRES_PASSWORD)"
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-primary-pdb
+  namespace: velora-prod-data
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres-primary

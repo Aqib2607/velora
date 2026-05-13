@@ -16,6 +16,8 @@ class LedgerEntry extends Model
         'account_id',
         'type',
         'amount',
+        'currency',
+        'exchange_rate',
         'memo',
     ];
 
