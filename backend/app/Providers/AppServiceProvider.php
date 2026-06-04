@@ -49,12 +49,25 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Register observers
+        \App\Models\Product::observe(\App\Observers\ProductObserver::class);
+
+        // Register database query listener for metrics
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Database\Events\QueryExecuted::class,
+            \App\Listeners\RecordDatabaseQuery::class
+        );
+
         // Strict mode — detect N+1 queries and lazy loading violations in non-production
         Model::preventLazyLoading(!app()->isProduction());
 
         // Enforce strict MySQL mode (only when running MySQL)
-        if (DB::connection()->getDriverName() === 'mysql') {
-            DB::statement("SET SESSION sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+        try {
+            if (DB::connection()->getDriverName() === 'mysql') {
+                DB::statement("SET SESSION sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+            }
+        } catch (\Exception $e) {
+            // Ignore DB connection errors during boot (e.g. for route:list)
         }
 
         RateLimiter::for('api', function (Request $request) {

@@ -4,9 +4,10 @@ import FeaturedProducts from "@/components/FeaturedProducts";
 import TopSellers from "@/components/TopSellers";
 import TrustBadges from "@/components/TrustBadges";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/data/mock";
+import { useProductsQuery } from "@/hooks/useProductsQuery";
 
 const Index = () => {
+  const { data: products = [] } = useProductsQuery();
   return (
     <>
       <HeroBanner />

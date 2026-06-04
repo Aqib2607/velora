@@ -1,0 +1,15 @@
+# Grafana Dashboard Provisioning Configuration
+# This file defines where Grafana should load dashboards from
+
+apiVersion: 1
+
+providers:
+  - name: 'Velora Dashboards'
+    orgId: 1
+    folder: 'Velora'
+    type: file
+    disableDeletion: false
+    editable: true
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

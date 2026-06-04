@@ -18,6 +18,9 @@ class OpenSearchService
             ->build();
     }
 
+    /**
+     * Index a product for full-text search
+     */
     public function indexProduct(array $productData): void
     {
         $params = [
@@ -33,11 +36,75 @@ class OpenSearchService
                 'available_regions' => $productData['available_regions'],
                 'status'            => $productData['status'],
                 'created_at'        => $productData['created_at'],
-                // Add n-gram edge tokens here if mapping supports it
+                'updated_at'        => $productData['updated_at'] ?? now()->toIso8601String(),
+                'seller_id'         => $productData['seller_id'] ?? null,
+                'popularity_score'  => $productData['popularity_score'] ?? 0,
             ]
         ];
 
         $this->client->index($params);
+    }
+
+    /**
+     * Delete product from index
+     */
+    public function deleteProduct(int $productId, int $tenantId): void
+    {
+        $params = [
+            'index' => 'velora_products_' . $tenantId,
+            'id'    => $productId,
+        ];
+
+        try {
+            $this->client->delete($params);
+        } catch (\Exception $e) {
+            // Product may not exist in index
+        }
+    }
+
+    /**
+     * Execute search query
+     */
+    public function search(array $query, int $tenantId): array
+    {
+        return $this->client->search($query);
+    }
+
+    /**
+     * Bulk index products for initial population
+     */
+    public function bulkIndex(array $products, int $tenantId): array
+    {
+        $body = [];
+
+        foreach ($products as $product) {
+            $body[] = ['index' => ['_index' => 'velora_products_' . $tenantId, '_id' => $product['id']]];
+            $body[] = [
+                'name'              => $product['name'],
+                'description'       => $product['description'],
+                'category_id'       => $product['category_id'],
+                'brand'             => $product['brand'],
+                'base_price'        => (float) $product['base_price'],
+                'average_rating'    => (float) $product['average_rating'],
+                'available_regions' => $product['available_regions'],
+                'status'            => $product['status'],
+                'created_at'        => $product['created_at'],
+                'popularity_score'  => $product['popularity_score'] ?? 0,
+            ];
+        }
+
+        return $this->client->bulk(['body' => $body]);
+    }
+
+    /**
+     * Check if product exists in index
+     */
+    public function exists(int $productId, int $tenantId): bool
+    {
+        return $this->client->exists([
+            'index' => 'velora_products_' . $tenantId,
+            'id'    => $productId,
+        ]);
     }
 
     public function createIndexMappings(int $tenantId): void

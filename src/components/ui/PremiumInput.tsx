@@ -32,14 +32,14 @@ const PremiumInput = forwardRef<HTMLInputElement, PremiumInputProps>(
     const variants = {
       default: cn(
         "bg-background border-border",
-        "hover:border-brand-500/50",
-        "focus:border-brand-500 focus:ring-brand-500/20",
+        "hover:border-foreground/30",
+        "focus:border-foreground focus:ring-4 focus:ring-foreground/5",
         error && "border-error focus:border-error focus:ring-error/20"
       ),
       glass: cn(
-        "glass border-border/50",
-        "hover:border-brand-500/50",
-        "focus:border-brand-500 focus:ring-brand-500/20",
+        "bg-background border-border",
+        "hover:border-foreground/30",
+        "focus:border-foreground focus:ring-4 focus:ring-foreground/5",
         error && "border-error focus:border-error focus:ring-error/20"
       ),
     };
@@ -50,7 +50,7 @@ const PremiumInput = forwardRef<HTMLInputElement, PremiumInputProps>(
           <motion.label
             className={cn(
               "block text-sm font-medium mb-2 transition-colors",
-              isFocused ? "text-brand-500" : "text-foreground",
+              isFocused ? "text-foreground" : "text-foreground/80",
               error && "text-error"
             )}
             animate={{ x: isFocused ? 2 : 0 }}
@@ -90,20 +90,6 @@ const PremiumInput = forwardRef<HTMLInputElement, PremiumInputProps>(
             </div>
           )}
 
-          {/* Focus Ring Animation */}
-          {isFocused && (
-            <motion.div
-              className="absolute inset-0 rounded-xl pointer-events-none"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              style={{
-                boxShadow: error
-                  ? "0 0 0 3px rgba(239, 68, 68, 0.1)"
-                  : "0 0 0 3px rgba(168, 85, 247, 0.1)",
-              }}
-            />
-          )}
         </div>
 
         {(error || helperText) && (

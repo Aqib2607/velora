@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Star } from "lucide-react";
+import { ShoppingCart, Star, Heart } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useRegionStore } from "@/store/useRegionStore";
 import { convertAndFormat } from "@/utils/currency";
-import type { Product } from "@/data/mock";
+import type { Product } from "@/hooks/useProductsQuery";
 
 const ProductCard = ({ product }: { product: Product }) => {
   const addItem = useCartStore((s) => s.addItem);

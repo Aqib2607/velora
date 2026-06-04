@@ -63,7 +63,7 @@ class MobileEcosystem:
         return {
             "app_id": app_id,
             "sync_strategy": "eventual_consistency",
-            "local_db": "sqlite",
+            "local_db": "realm",
             "sync_interval": 300,  # 5 minutes
             "conflict_resolution": "last_write_wins",
             "entities_to_sync": [

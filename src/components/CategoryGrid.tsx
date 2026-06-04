@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { categories } from "@/data/mock";
+import { useCategoriesQuery } from "@/hooks/useCategoriesQuery";
 
 const CategoryGrid = () => {
+  const { data: categories = [] } = useCategoriesQuery();
   return (
     <section className="container mx-auto px-4 py-12">
       <h2 className="text-2xl font-bold mb-6">Shop by Category</h2>

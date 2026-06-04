@@ -1,0 +1,466 @@
+# Velora Prometheus Alert Rules
+# Complete alert coverage for platform health, infrastructure, database, services, and business logic
+
+groups:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Platform Health Alerts (SEV-1)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: platform_health
+    interval: 30s
+    rules:
+      # API Availability
+      - alert: APIErrorRateHigh
+        expr: rate(velora_http_requests_total{status=~"5.."}[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: api
+        annotations:
+          summary: "API error rate exceeds 1% ({{ $value | humanizePercentage }})"
+          description: "API is returning too many 5xx errors. This indicates a platform-wide issue."
+          runbook: "/docs/runbooks/sev1-platform-outage.md"
+
+      # API Latency p99
+      - alert: APILatencyP99High
+        expr: histogram_quantile(0.99, rate(velora_http_request_duration_seconds[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: api
+        annotations:
+          summary: "API latency p99 exceeds 500ms ({{ $value | humanizeDuration }})"
+          description: "Users are experiencing slow API responses."
+          runbook: "/docs/runbooks/api-latency.md"
+
+      # Prometheus Scrape Failures
+      - alert: PrometheusScrapeFailed
+        expr: rate(prometheus_tsdb_symbol_table_size_bytes[1h]) == 0
+        for: 5m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: monitoring
+        annotations:
+          summary: "Prometheus cannot scrape metrics"
+          description: "Prometheus has not collected new metrics in the last hour. Metrics pipeline broken."
+          runbook: "/docs/runbooks/prometheus-failure.md"
+
+      # AlertManager Down
+      - alert: AlertManagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: alerting
+        annotations:
+          summary: "AlertManager is down"
+          description: "AlertManager is unreachable. Alerts cannot be routed."
+          runbook: "/docs/runbooks/alertmanager-failure.md"
+
+      # Frontend Error Rate High
+      - alert: FrontendErrorRateHigh
+        expr: rate(velora_frontend_error_total[5m]) > 0.001
+        for: 3m
+        labels:
+          severity: high
+          sev: sev-2
+          component: frontend
+        annotations:
+          summary: "Frontend error rate exceeds 0.1%"
+          description: "Users are experiencing JavaScript errors or crashes."
+          runbook: "/docs/runbooks/frontend-errors.md"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Infrastructure & Kubernetes Alerts (SEV-1/2)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: infrastructure
+    interval: 30s
+    rules:
+      # Kubernetes Node Not Ready
+      - alert: KubernetesNodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: kubernetes
+        annotations:
+          summary: "Kubernetes node is not ready"
+          description: "Node {{ $labels.node }} is not in Ready state"
+          runbook: "/docs/runbooks/kubernetes-node-failure.md"
+
+      # Pod CrashLoopBackOff
+      - alert: KubernetesPodCrashLooping
+        expr: max_over_time(kube_pod_container_status_restarts_total[15m]) > 5
+        labels:
+          severity: critical
+          sev: sev-1
+          component: kubernetes
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crashing repeatedly"
+          description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in 15 minutes"
+          runbook: "/docs/runbooks/pod-crashloop.md"
+
+      # Pod Pending Too Long
+      - alert: KubernetesPodNotHealthy
+        expr: min_over_time(sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"})[15m:1m]) > 0
+        for: 15m
+        labels:
+          severity: high
+          sev: sev-2
+          component: kubernetes
+        annotations:
+          summary: "Pod {{ $labels.pod }} is not healthy"
+          description: "Pod has been in {{ $labels.phase }} state for more than 15 minutes"
+          runbook: "/docs/runbooks/pod-unhealthy.md"
+
+      # PVC Usage High
+      - alert: KubernetesPersistentVolumeUsageHigh
+        expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.8
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: kubernetes
+        annotations:
+          summary: "PVC {{ $labels.persistentvolumeclaim }} usage is {{ $value | humanizePercentage }}"
+          description: "Persistent volume is running out of space"
+          runbook: "/docs/runbooks/pvc-full.md"
+
+      # Container Restart Rate
+      - alert: KubernetesContainerRestartingTooOften
+        expr: rate(kube_pod_container_status_restarts_total[1h]) > 0.1
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: kubernetes
+        annotations:
+          summary: "Container {{ $labels.container }} is restarting too frequently"
+          description: "Container restart rate is {{ $value }} times/hour"
+          runbook: "/docs/runbooks/container-restarts.md"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Database Alerts (SEV-1/2)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: database
+    interval: 30s
+    rules:
+      # MySQL Replication Lag
+      - alert: MySQLReplicationLagHigh
+        expr: mysql_global_status_seconds_behind_master > 1
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: database
+        annotations:
+          summary: "MySQL replication lag is {{ $value | humanizeDuration }}"
+          description: "Replica is lagging behind primary by {{ $value | humanizeDuration }}"
+          runbook: "/docs/runbooks/mysql-replication-lag.md"
+
+      # MySQL Connection Pool
+      - alert: MySQLConnectionPoolHigh
+        expr: mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: database
+        annotations:
+          summary: "MySQL connection pool utilization is high ({{ $value | humanizePercentage }})"
+          description: "Approaching connection limit ({{ $value }} of max connections)"
+          runbook: "/docs/runbooks/mysql-connections.md"
+
+      # MySQL Query Latency
+      - alert: MySQLQueryLatencyHigh
+        expr: histogram_quantile(0.99, rate(velora_database_query_duration_seconds{db="mysql"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: database
+        annotations:
+          summary: "MySQL query latency p99 is {{ $value | humanizeDuration }}"
+          description: "Slow database queries detected"
+          runbook: "/docs/runbooks/mysql-slow-queries.md"
+
+      # MySQL Query Errors
+      - alert: MySQLQueryErrorRate
+        expr: rate(velora_database_query_errors_total{db="mysql"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: database
+        annotations:
+          summary: "MySQL query errors detected"
+          description: "Database is returning errors at rate {{ $value }} per second"
+          runbook: "/docs/runbooks/mysql-errors.md"
+
+      # MySQL Disk Space Usage
+      - alert: MySQLDiskSpaceUsageHigh
+        expr: mysql_global_status_innodb_data_written / (1024 * 1024 * 1024) > 400
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: database
+        annotations:
+          summary: "MySQL disk space usage is high"
+          description: "InnoDB data size is {{ $value | humanize }}GB (limit: 500GB)"
+          runbook: "/docs/runbooks/mysql-disk-space.md"
+
+      # Redis Connection Pool Exhausted
+      - alert: RedisConnectionPoolExhausted
+        expr: velora_redis_connected_clients > 900
+        for: 2m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: cache
+        annotations:
+          summary: "Redis connection pool is exhausted"
+          description: "{{ $value }} connections active (limit: 1000)"
+          runbook: "/docs/runbooks/redis-pool-exhausted.md"
+
+      # Redis Memory Usage
+      - alert: RedisMemoryUsageHigh
+        expr: velora_redis_memory_usage_bytes / (1024 * 1024 * 1024) > 8
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: cache
+        annotations:
+          summary: "Redis memory usage is {{ $value | humanize }}GB"
+          description: "Redis is using too much memory (limit: 10GB)"
+          runbook: "/docs/runbooks/redis-memory.md"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Queue & Job Processing Alerts (SEV-2)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: queue
+    interval: 30s
+    rules:
+      # Queue Backlog
+      - alert: QueueJobsBacklog
+        expr: velora_queue_jobs_pending > 1000
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: queue
+        annotations:
+          summary: "Queue has {{ $value }} pending jobs"
+          description: "Job backlog is growing. May indicate processing slowdown."
+          runbook: "/docs/runbooks/queue-backlog.md"
+
+      # Job Processing Latency
+      - alert: QueueJobLatencyHigh
+        expr: histogram_quantile(0.99, rate(velora_queue_job_duration_seconds[5m])) > 60
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: queue
+        annotations:
+          summary: "Queue job latency p99 is {{ $value | humanizeDuration }}"
+          description: "Jobs are taking too long to process"
+          runbook: "/docs/runbooks/queue-latency.md"
+
+      # Job Failure Rate
+      - alert: QueueJobFailureRate
+        expr: rate(velora_queue_job_failures_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: high
+          sev: sev-2
+          component: queue
+        annotations:
+          summary: "Queue job failure rate is {{ $value | humanizePercentage }}"
+          description: "Multiple jobs are failing. Check job logs."
+          runbook: "/docs/runbooks/queue-failures.md"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Payment & Transaction Alerts (SEV-1)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: payment
+    interval: 30s
+    rules:
+      # Payment Processing Errors
+      - alert: PaymentProcessingErrors
+        expr: rate(velora_payment_errors_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          sev: sev-1
+          component: payment
+        annotations:
+          summary: "Payment processing errors detected (rate: {{ $value | humanizePercentage }})"
+          description: "Payment gateway is returning errors. This blocks checkout."
+          runbook: "/docs/runbooks/payment-failure.md"
+
+      # Payment Processing Latency
+      - alert: PaymentLatencyHigh
+        expr: histogram_quantile(0.99, rate(velora_payment_processing_duration_seconds[5m])) > 5
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: payment
+        annotations:
+          summary: "Payment processing latency p99 is {{ $value | humanizeDuration }}"
+          description: "Payment gateway is slow. Users may see timeouts."
+          runbook: "/docs/runbooks/payment-latency.md"
+
+      # Low Transaction Success Rate
+      - alert: TransactionSuccessRateLow
+        expr: rate(velora_transactions_total{status="completed"}[5m]) / rate(velora_transactions_total[5m]) < 0.99
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: payment
+        annotations:
+          summary: "Transaction success rate is {{ $value | humanizePercentage }}"
+          description: "Too many transactions are failing. Check payment integration."
+          runbook: "/docs/runbooks/transaction-failures.md"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Search & Catalog Alerts (SEV-2)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: search
+    interval: 30s
+    rules:
+      # Search Query Latency
+      - alert: SearchLatencyHigh
+        expr: histogram_quantile(0.99, rate(velora_search_query_duration_seconds[5m])) > 1
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: search
+        annotations:
+          summary: "Search latency p99 is {{ $value | humanizeDuration }}"
+          description: "Search queries are slow. This impacts discoverability."
+          runbook: "/docs/runbooks/search-latency.md"
+
+      # High Zero-Result Search Rate
+      - alert: SearchZeroResultRateHigh
+        expr: velora_search_zero_results_rate > 0.05
+        for: 5m
+        labels:
+          severity: medium
+          sev: sev-3
+          component: search
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of searches return no results"
+          description: "Catalog may have gaps or search index may be stale."
+          runbook: "/docs/runbooks/search-zero-results.md"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Business Logic Alerts (SEV-2/3)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: business_logic
+    interval: 30s
+    rules:
+      # Refund Rate Spike
+      - alert: RefundRateSpike
+        expr: rate(velora_refunds_completed_total[1h]) > rate(velora_refunds_completed_total offset 24h[1h]) * 2
+        for: 5m
+        labels:
+          severity: high
+          sev: sev-2
+          component: refunds
+        annotations:
+          summary: "Refund rate is 2x higher than yesterday"
+          description: "Refund rate: {{ $value | humanize }}/hour. May indicate product or service issues."
+          runbook: "/docs/runbooks/refund-spike.md"
+
+      # Commission Calculation Errors
+      - alert: CommissionCalculationErrors
+        expr: rate(velora_commission_calculation_errors_total[5m]) > 0
+        for: 3m
+        labels:
+          severity: high
+          sev: sev-2
+          component: commissions
+        annotations:
+          summary: "Commission calculation errors detected"
+          description: "Unable to calculate commissions for {{ $value }} rules/minute"
+          runbook: "/docs/runbooks/commission-errors.md"
+
+      # Merchant Onboarding Success Rate Low
+      - alert: MerchantOnboardingRateLow
+        expr: rate(velora_merchants_onboarded_total{status="active"}[1h]) / rate(velora_merchants_onboarded_total[1h]) < 0.90
+        for: 2h
+        labels:
+          severity: medium
+          sev: sev-3
+          component: merchant-success
+        annotations:
+          summary: "Merchant onboarding success rate is {{ $value | humanizePercentage }}"
+          description: "Many onboarding attempts are failing. Check KYC/verification system."
+          runbook: "/docs/runbooks/merchant-onboarding-failures.md"
+
+      # Cache Hit Ratio Low
+      - alert: CacheHitRatioLow
+        expr: rate(velora_cache_hits_total[5m]) / (rate(velora_cache_hits_total[5m]) + rate(velora_cache_misses_total[5m])) < 0.80
+        for: 10m
+        labels:
+          severity: medium
+          sev: sev-3
+          component: cache
+        annotations:
+          summary: "Cache hit ratio is {{ $value | humanizePercentage }}"
+          description: "Cache is not effective. Consider cache TTL adjustments."
+          runbook: "/docs/runbooks/cache-efficiency.md"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Operational Alerts (SEV-2/3)
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: operational
+    interval: 30s
+    rules:
+      # Exception Rate High
+      - alert: ExceptionRateHigh
+        expr: rate(velora_exceptions_total[5m]) > 1
+        for: 3m
+        labels:
+          severity: high
+          sev: sev-2
+          component: application
+        annotations:
+          summary: "Application exception rate is {{ $value }} per second"
+          description: "Multiple exceptions being thrown. Check application logs."
+          runbook: "/docs/runbooks/exception-spike.md"
+
+      # Authentication Failure Rate
+      - alert: AuthFailureRateHigh
+        expr: rate(velora_auth_failures_total[5m]) / (rate(velora_auth_attempts_total[5m]) + rate(velora_auth_failures_total[5m])) > 0.10
+        for: 5m
+        labels:
+          severity: medium
+          sev: sev-3
+          component: authentication
+        annotations:
+          summary: "Auth failure rate is {{ $value | humanizePercentage }}"
+          description: "Too many failed login attempts. May indicate attack or service issue."
+          runbook: "/docs/runbooks/auth-failures.md"
+
+      # Service Health Check Failed
+      - alert: ServiceHealthCheckFailed
+        expr: velora_service_health == 0
+        for: 2m
+        labels:
+          severity: high
+          sev: sev-2
+          component: health-check
+        annotations:
+          summary: "Service {{ $labels.service }} health check failed"
+          description: "Service is unhealthy"
+          runbook: "/docs/runbooks/service-health.md"

@@ -9,12 +9,12 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const AccountMenu = () => {
     const { t } = useTranslation();
-    // Mock auth state for UI purposes
-    const isAuthenticated = false;
-    const userName = "Guest";
+    const { isAuthenticated, user, clearAuth } = useAuthStore();
+    const userName = user?.name || "Guest";
 
     return (
         <DropdownMenu>
@@ -67,7 +67,7 @@ const AccountMenu = () => {
                             <Link to="/account/recommendations">Recommendations</Link>
                         </DropdownMenuItem>
                         {isAuthenticated && (
-                            <DropdownMenuItem className="cursor-pointer text-sm font-medium focus:text-red-600">
+                            <DropdownMenuItem onClick={clearAuth} className="cursor-pointer text-sm font-medium focus:text-red-600">
                                 Sign Out
                             </DropdownMenuItem>
                         )}

@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
 
 interface PremiumButtonProps extends Omit<HTMLMotionProps<"button">, "size"> {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "glass";
-  size?: "sm" | "md" | "lg";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "glass" | "danger";
+  size?: "sm" | "md" | "lg" | "xl";
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -28,20 +28,22 @@ const PremiumButton = forwardRef<HTMLButtonElement, PremiumButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+    const baseStyles = "inline-flex items-center justify-center gap-2.5 font-semibold rounded-2xl transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden";
 
     const variants = {
-      primary: "bg-gradient-brand text-white hover:shadow-premium focus:ring-brand-500",
-      secondary: "bg-muted text-foreground hover:bg-muted/80 focus:ring-muted",
-      outline: "border-2 border-border hover:border-brand-500 hover:text-brand-500 focus:ring-brand-500",
-      ghost: "hover:bg-muted/50 focus:ring-muted",
-      glass: "glass hover:shadow-glass-hover focus:ring-brand-500",
+      primary: "bg-foreground text-background shadow-sm hover:-translate-y-0.5",
+      secondary: "bg-muted text-foreground hover:bg-muted/80",
+      outline: "border-2 border-border hover:border-foreground/40 hover:text-foreground shadow-sm hover:-translate-y-0.5",
+      ghost: "hover:bg-muted/50",
+      glass: "bg-background/80 backdrop-blur-xl border border-border shadow-sm hover:shadow-md",
+      danger: "bg-destructive text-white hover:bg-destructive/90",
     };
 
     const sizes = {
-      sm: "px-4 py-2 text-sm",
-      md: "px-6 py-3 text-base",
-      lg: "px-8 py-4 text-lg",
+      sm: "px-4 py-2 text-sm rounded-xl",
+      md: "px-6 py-3 text-sm",
+      lg: "px-8 py-4 text-base",
+      xl: "px-10 py-5 text-lg",
     };
 
     return (
@@ -66,9 +68,9 @@ const PremiumButton = forwardRef<HTMLButtonElement, PremiumButtonProps>(
           </>
         ) : (
           <>
-            {leftIcon && <span>{leftIcon}</span>}
+            {leftIcon && <span className="shrink-0">{leftIcon}</span>}
             {children}
-            {rightIcon && <span>{rightIcon}</span>}
+            {rightIcon && <span className="shrink-0">{rightIcon}</span>}
           </>
         )}
       </motion.button>

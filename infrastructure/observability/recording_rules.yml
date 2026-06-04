@@ -1,0 +1,8 @@
+groups:
+  - name: VeloraRecordingRules
+    rules:
+      - record: instance:velora_http_requests:rate5m
+        expr: rate(velora_http_requests_total[5m])
+        
+      - record: instance:velora_payment_volume:rate1h
+        expr: rate(velora_payments_processed_total{status="success"}[1h])

@@ -1,4 +1,4 @@
-import { DealItem } from "@/lib/mockDealsData";
+import { DealItem } from "@/hooks/useDealsQuery";
 import DealCard from "./DealCard";
 import { Flame } from "lucide-react";
 

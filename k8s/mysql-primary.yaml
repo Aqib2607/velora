@@ -1,0 +1,309 @@
+# Velora MySQL Primary Deployment
+# Replaces postgres-replication.yaml
+# MySQL 8.0 with InnoDB engine for production use
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-primary-config
+  namespace: velora-prod-data
+data:
+  mysql.cnf: |
+    [mysqld]
+    # InnoDB settings
+    default-storage-engine=InnoDB
+    innodb_buffer_pool_size=32G
+    innodb_log_file_size=1G
+    innodb_flush_log_at_trx_commit=2
+    
+    # Replication settings
+    server-id=1
+    log_bin=mysql-bin
+    binlog_format=ROW
+    binlog_row_image=MINIMAL
+    
+    # Performance settings
+    max_connections=500
+    max_allowed_packet=256M
+    
+    # Character set
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+    
+    # Slow query log for monitoring
+    slow_query_log=1
+    long_query_time=2
+    log_queries_not_using_indexes=1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-primary
+  namespace: velora-prod-data
+spec:
+  selector:
+    app: mysql-primary
+  type: LoadBalancer
+  ports:
+  - port: 3306
+    targetPort: 3306
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-primary
+  namespace: velora-prod-data
+spec:
+  serviceName: mysql-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-primary
+  template:
+    metadata:
+      labels:
+        app: mysql-primary
+        region: us-central
+    spec:
+      nodeSelector:
+        region: us-central
+      initContainers:
+      - name: init-mysql
+        image: mysql:8.0
+        command:
+        - bash
+        - -c
+        - |
+          set -ex
+          mkdir -p /var/lib/mysql
+          chmod 700 /var/lib/mysql
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: root-password
+        - name: MYSQL_DATABASE
+          value: velora
+        - name: MYSQL_USER
+          value: velora
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: velora-password
+        resources:
+          requests:
+            cpu: 8
+            memory: 32Gi
+          limits:
+            cpu: 16
+            memory: 64Gi
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-config
+          mountPath: /etc/mysql/conf.d
+        - name: mysql-initdb
+          mountPath: /docker-entrypoint-initdb.d
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: mysql-config
+        configMap:
+          name: mysql-primary-config
+      - name: mysql-initdb
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "fast-storage"
+      resources:
+        requests:
+          storage: 500Gi
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+  namespace: velora-prod-data
+type: Opaque
+stringData:
+  root-password: "changeme"  # MUST be updated in production
+  velora-password: "changeme"  # MUST be updated in production
+  replication-user: "replication"
+  replication-password: "changeme"  # MUST be updated in production
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-replica-eu
+  namespace: velora-prod-data
+spec:
+  serviceName: mysql-replica-eu
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-replica-eu
+  template:
+    metadata:
+      labels:
+        app: mysql-replica-eu
+        region: eu-west
+    spec:
+      nodeSelector:
+        region: eu-west
+      initContainers:
+      - name: init-mysql
+        image: mysql:8.0
+        command:
+        - bash
+        - -c
+        - |
+          set -ex
+          mkdir -p /var/lib/mysql
+          chmod 700 /var/lib/mysql
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: root-password
+        - name: MYSQL_REPLICATION_MODE
+          value: "slave"
+        - name: MYSQL_MASTER_HOST
+          value: "mysql-primary.velora-prod-data.svc.cluster.local"
+        - name: MYSQL_MASTER_USER
+          value: "replication"
+        - name: MYSQL_MASTER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: replication-password
+        resources:
+          requests:
+            cpu: 8
+            memory: 32Gi
+          limits:
+            cpu: 16
+            memory: 64Gi
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-config
+          mountPath: /etc/mysql/conf.d
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: mysql-config
+        configMap:
+          name: mysql-primary-config
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "fast-storage"
+      resources:
+        requests:
+          storage: 500Gi
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-mysql-replication
+  namespace: velora-prod-data
+spec:
+  template:
+    spec:
+      serviceAccountName: db-setup-sa
+      containers:
+      - name: setup
+        image: mysql:8.0
+        command:
+        - /bin/sh
+        - -c
+        - |
+          #!/bin/sh
+          set -e
+          
+          echo "Waiting for MySQL primary to be ready..."
+          for i in {1..30}; do
+            if mysqladmin ping -h mysql-primary -u root -pchangeme >/dev/null 2>&1; then
+              echo "MySQL primary is ready"
+              break
+            fi
+            echo "Attempt $i: Waiting for MySQL..."
+            sleep 2
+          done
+          
+          echo "Setting up replication..."
+          
+          # Create replication user on primary
+          mysql -h mysql-primary -u root -pchangeme <<EOF
+          CREATE USER IF NOT EXISTS 'replication'@'%' IDENTIFIED BY 'changeme';
+          GRANT REPLICATION SLAVE ON *.* TO 'replication'@'%';
+          FLUSH PRIVILEGES;
+          SHOW MASTER STATUS;
+          EOF
+          
+          echo "Replication setup complete"
+      restartPolicy: Never
+  backoffLimit: 3

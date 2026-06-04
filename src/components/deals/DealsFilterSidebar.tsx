@@ -1,10 +1,12 @@
 import { useDealsFilterStore } from "@/store/useDealsFilterStore";
-import { CATEGORIES, BRANDS } from "@/lib/mockDealsData";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
+const CATEGORIES = ["Electronics", "Fashion", "Home & Kitchen", "Beauty", "Sports"];
+const BRANDS = ["Sony", "Samsung", "Nike", "Apple", "Dell"];
 
 const DealsFilterSidebar = () => {
     const {

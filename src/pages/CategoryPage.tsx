@@ -1,9 +1,12 @@
 import { useParams } from "react-router-dom";
 import ProductCard from "@/components/ProductCard";
-import { products, categories } from "@/data/mock";
+import { useProductsQuery } from "@/hooks/useProductsQuery";
+import { useCategoriesQuery } from "@/hooks/useCategoriesQuery";
 
 const CategoryPage = () => {
   const { slug } = useParams();
+  const { data: products = [] } = useProductsQuery();
+  const { data: categories = [] } = useCategoriesQuery();
   const category = categories.find((c) => c.slug === slug);
   const filtered = products.filter((p) =>
     p.category.toLowerCase().replace(/ & /g, "-") === slug

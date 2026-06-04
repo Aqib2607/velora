@@ -1,4 +1,4 @@
-import { DealItem } from "@/lib/mockDealsData";
+import { DealItem } from "@/hooks/useDealsQuery";
 import DealCountdown from "./DealCountdown";
 import { useRegionStore } from "@/store/useRegionStore";
 import { Star, ShoppingCart } from "lucide-react";

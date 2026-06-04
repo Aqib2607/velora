@@ -2,10 +2,13 @@
 
 ## Database Strategy
 
-- MySQL 8 (InnoDB, strict mode)
-- Shared database with tenant_id
-- Global scopes enforce isolation
-- Partition large tables monthly
+- **MySQL 8** (InnoDB, strict mode)
+- **Primary:** US-Central region (mysql-primary.velora-prod-data.svc.cluster.local:3306)
+- **Replica:** EU-West region (mysql-replica-eu.velora-prod-data.svc.cluster.local:3306)
+- Shared database with `tenant_id` for multi-tenancy
+- Global scopes enforce tenant isolation
+- Partition large tables monthly by created_at
+- **Note:** PostgreSQL support has been removed. MySQL is the single supported database engine.
 
 ---
 

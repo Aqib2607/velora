@@ -1,0 +1,29 @@
+groups:
+  - name: VeloraAlerts
+    rules:
+      - alert: HighApiErrorRate
+        expr: rate(velora_http_requests_total{status=~"5.."}[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API Error Rate Detected"
+          description: "API is returning 5xx errors at a rate of > 5/sec."
+      
+      - alert: LedgerReconciliationFailed
+        expr: velora_reconciliation_mismatch_total > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ledger Reconciliation Failed"
+          description: "Stripe balance does not match internal ledger balance."
+
+      - alert: PaymentGatewayLatency
+        expr: histogram_quantile(0.95, rate(velora_payment_processing_duration_seconds_bucket[5m])) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Payment Gateway Latency"
+          description: "95th percentile payment processing time is > 2 seconds."

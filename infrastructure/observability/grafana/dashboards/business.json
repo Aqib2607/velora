@@ -1,0 +1,23 @@
+{
+  "title": "Velora Business Metrics",
+  "panels": [
+    {
+      "title": "Checkout Success Rate",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{status=\"200\", path=\"/api/v1/orders\"}[5m]) / rate(http_requests_total{path=\"/api/v1/orders\"}[5m]) * 100"
+        }
+      ]
+    },
+    {
+      "title": "Stripe Webhook Errors",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{status=\"500\", path=\"/api/v1/webhooks/stripe\"}[5m])"
+        }
+      ]
+    }
+  ]
+}

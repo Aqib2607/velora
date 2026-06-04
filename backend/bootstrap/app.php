@@ -15,14 +15,25 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global middleware
         $middleware->trustProxies(at: '*');
 
-        // Register middleware aliases
+        // Security headers on every response
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
+        // Structured logging
         $middleware->append(\App\Http\Middleware\StructuredLogging::class);
+
+        // Register middleware aliases
         $middleware->alias([
             'resolve.tenant' => \App\Http\Middleware\ResolveTenant::class,
             'idempotency'    => \App\Http\Middleware\IdempotencyMiddleware::class,
             'audit.log'      => \App\Http\Middleware\AuditLogMiddleware::class,
             'cache.api'      => \App\Http\Middleware\CacheApiResponse::class,
+            'role'           => \App\Http\Middleware\RequireRole::class,
+            'permission'     => \App\Http\Middleware\RequirePermission::class,
+            'metrics'        => \App\Http\Middleware\MetricsMiddleware::class,
         ]);
+
+        // Add metrics middleware to API routes
+        $middleware->api(prepend: [\App\Http\Middleware\MetricsMiddleware::class]);
 
         // Sanctum stateful domains (for SPA / cookie auth)
         $middleware->statefulApi();

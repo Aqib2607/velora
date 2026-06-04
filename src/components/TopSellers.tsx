@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { Star } from "lucide-react";
-import { sellers } from "@/data/mock";
 
 const TopSellers = () => {
+  const sellers: any[] = [];
   return (
     <section className="container mx-auto px-4 py-12">
       <h2 className="text-2xl font-bold mb-6">Top Sellers</h2>
