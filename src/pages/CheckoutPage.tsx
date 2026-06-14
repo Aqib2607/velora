@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCartStore } from "@/store/cartStore";
+import { useCartQuery, useClearCart } from "@/hooks/useCartQuery";
 import { useRegionStore } from "@/store/useRegionStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { convertAndFormat } from "@/utils/currency";
@@ -28,10 +28,12 @@ const EMPTY_ADDRESS: AddressFields = {
 };
 
 const CheckoutPage = () => {
-    const { items, totalPrice, clearCart } = useCartStore();
+    const { data: cart } = useCartQuery();
+    const { mutate: clearCart } = useClearCart();
+    const items = cart?.items || [];
+    const totalInUSD = items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
     const { currency, locale, taxRate }   = useRegionStore();
     const { isAuthenticated }             = useAuthStore();
-    const totalInUSD                      = totalPrice();
     const { t }                           = useTranslation();
     const navigate                        = useNavigate();
     const placeOrder                      = usePlaceOrder();
@@ -319,17 +321,17 @@ const CheckoutPage = () => {
 
                             <div className="space-y-3 max-h-60 overflow-y-auto mb-6">
                                 {items.map((item) => (
-                                    <div key={item.product.id} className="flex items-center gap-3 text-sm">
+                                    <div key={item.id} className="flex items-center gap-3 text-sm">
                                         <img
-                                            src={item.product.image}
-                                            alt={item.product.name}
+                                            src={item.sku.product.thumbnail || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80"}
+                                            alt={item.sku.product.name}
                                             className="h-12 w-12 rounded-xl object-cover flex-shrink-0"
                                         />
                                         <span className="flex-1 truncate font-medium">
-                                            {item.product.name} × {item.quantity}
+                                            {item.sku.product.name} × {item.quantity}
                                         </span>
                                         <span className="font-semibold whitespace-nowrap">
-                                            {convertAndFormat(item.product.price * item.quantity, currency, locale)}
+                                            {convertAndFormat(item.unit_price * item.quantity, currency, locale)}
                                         </span>
                                     </div>
                                 ))}

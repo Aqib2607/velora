@@ -1,6 +1,12 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { trackAPILatency, trackError } from './metrics';
+
+declare module 'axios' {
+  export interface InternalAxiosRequestConfig {
+    startTime?: number;
+  }
+}
 
 // ──────────────────────────────────────────────────────────
 // Velora API Client
@@ -26,16 +32,16 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     config.headers['X-Tenant-ID'] = TENANT_ID;
 
     // Store request start time for metrics
-    (config as any).startTime = Date.now();
+    config.startTime = Date.now();
 
     return config;
 });
 
 // ── Response interceptor: handle 401 globally + track metrics ──────────────
 api.interceptors.response.use(
-    (res) => {
+    (res: AxiosResponse) => {
         // Track successful API latency
-        const config = res.config as any;
+        const config = res.config as InternalAxiosRequestConfig;
         if (config.startTime) {
             const duration = Date.now() - config.startTime;
             trackAPILatency(
@@ -49,7 +55,7 @@ api.interceptors.response.use(
     },
     (error: AxiosError) => {
         // Track failed API latency
-        const config = error.config as any;
+        const config = error.config as InternalAxiosRequestConfig | undefined;
         if (config?.startTime) {
             const duration = Date.now() - config.startTime;
             trackAPILatency(
@@ -79,13 +85,13 @@ api.interceptors.response.use(
 // ──────────────────────────────────────────────────────────
 // Typed response helper — unwraps { status, data } envelope
 // ──────────────────────────────────────────────────────────
-export async function apiFetch<T>(
+export async function apiFetch<TResponse = unknown, TRequest = unknown>(
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
-    data?: unknown,
+    data?: TRequest,
     params?: Record<string, unknown>,
-): Promise<T> {
-    const res = await api.request<{ status: string; data: T }>({
+): Promise<TResponse> {
+    const res = await api.request<{ status: string; data: TResponse }>({
         method,
         url,
         data,

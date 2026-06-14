@@ -23,6 +23,7 @@ use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\LocationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\MetricsController;
@@ -63,6 +64,7 @@ Route::prefix('v1')->middleware(['resolve.tenant', 'throttle:api'])->group(funct
     Route::get('regions',    [RegionController::class, 'index']);
     Route::get('currencies', [CurrencyController::class, 'index']);
     Route::get('deals',      [DealController::class, 'index']);
+    Route::get('location/reverse-geocode', [LocationController::class, 'reverseGeocode']);
 
     // Catalog (Public browse — no auth required)
     Route::middleware('cache.api')->group(function () {
@@ -119,6 +121,7 @@ Route::prefix('v1')->middleware([
     Route::prefix('cart')->group(function () {
         Route::get('/',               [CartController::class, 'show']);
         Route::post('items',          [CartController::class, 'addItem']);
+        Route::put('items/{item}',    [CartController::class, 'updateItem']);
         Route::delete('items/{item}', [CartController::class, 'removeItem']);
         Route::delete('/',            [CartController::class, 'clear']);
     });

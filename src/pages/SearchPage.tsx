@@ -4,12 +4,13 @@ import PremiumProductCard from "@/components/PremiumProductCard";
 import { Filter, Star, SlidersHorizontal, X } from "lucide-react";
 import api from "@/utils/api";
 import { motion, AnimatePresence } from "framer-motion";
+import { Product } from "@/types/domain";
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -25,7 +26,7 @@ const SearchPage = () => {
       try {
         const qs = searchParams.toString();
         // Since we don't have openSearch right now, this hits the backend controller we built
-        const res = await api.get(`/search?${qs}`);
+        const res = await api.get<{ data: { data: Product[] } }>(`/search?${qs}`);
         // If the backend isn't returning data correctly due to DB connection, fallback to empty
         setResults(res.data?.data?.data || []);
       } catch (error) {

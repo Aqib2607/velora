@@ -8,9 +8,10 @@ const CategoryPage = () => {
   const { data: products = [] } = useProductsQuery();
   const { data: categories = [] } = useCategoriesQuery();
   const category = categories.find((c) => c.slug === slug);
-  const filtered = products.filter((p) =>
-    p.category.toLowerCase().replace(/ & /g, "-") === slug
-  );
+  const filtered = products.filter((p) => {
+    const catName = typeof p.category === 'object' ? p.category?.name : p.category;
+    return (catName || "").toLowerCase().replace(/ & /g, "-") === slug;
+  });
 
   return (
     <div className="container mx-auto px-4 py-8">

@@ -8,11 +8,17 @@ export interface Category {
     icon?: string;
     image?: string;
     description?: string;
+    productCount?: number;
 }
 
 export function useCategoriesQuery() {
     return useQuery({
         queryKey: ['categories'],
-        queryFn: () => apiFetch<Category[]>('GET', '/v1/categories'),
+        queryFn: async () => {
+            const res = await apiFetch<Category[] | { data: Category[] }>('GET', '/v1/catalog/categories');
+            if (res && Array.isArray(res)) return res;
+            if (res && 'data' in res && Array.isArray(res.data)) return res.data;
+            return [];
+        },
     });
 }

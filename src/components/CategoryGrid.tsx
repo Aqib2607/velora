@@ -14,9 +14,9 @@ const CategoryGrid = () => {
             className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover-lift hover:border-primary/50 transition-colors animate-fade-in"
             style={{ animationDelay: `${i * 0.05}s` }}
           >
-            <span className="text-3xl">{cat.icon}</span>
+            <span className="text-3xl">{cat.icon || "📦"}</span>
             <span className="text-sm font-medium text-center">{cat.name}</span>
-            <span className="text-xs text-muted-foreground">{cat.productCount.toLocaleString()}</span>
+            <span className="text-xs text-muted-foreground">{(cat.productCount || 0).toLocaleString()} products</span>
           </Link>
         ))}
       </div>

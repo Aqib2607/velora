@@ -35,7 +35,9 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
         // Content Security Policy (API — no HTML returned so minimal CSP needed)
-        $response->headers->set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+        if ($request->is('api/*')) {
+            $response->headers->set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+        }
 
         // Remove server fingerprint header
         $response->headers->remove('X-Powered-By');

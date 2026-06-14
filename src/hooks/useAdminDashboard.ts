@@ -38,7 +38,7 @@ export interface AuditLog {
     id        : number;
     user_id   : number;
     action    : string;
-    payload   : Record<string, unknown>;
+    payload   : Record<string, string | number | boolean | object | null | undefined>;
     created_at: string;
     user      : { id: number; name: string; email: string } | null;
 }
@@ -50,7 +50,7 @@ export interface Tenant {
     domain    : string | null;
     status    : string;
     plan      : string;
-    settings  : Record<string, unknown> | null;
+    settings  : Record<string, string | number | boolean | object | null | undefined> | null;
     created_at: string;
 }
 
@@ -83,7 +83,7 @@ export function useAdminStats() {
 export function useAdminOrders(filters?: { status?: string; search?: string; page?: number }) {
     return useQuery({
         queryKey: ['admin', 'orders', filters],
-        queryFn : () => apiFetch('GET', '/v1/admin/orders', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/admin/orders', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 
@@ -91,7 +91,7 @@ export function useAdminOrders(filters?: { status?: string; search?: string; pag
 export function useAdminUsers(filters?: { search?: string; status?: string; page?: number }) {
     return useQuery({
         queryKey: ['admin', 'users', filters],
-        queryFn : () => apiFetch('GET', '/v1/admin/users', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/admin/users', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 
@@ -99,7 +99,7 @@ export function useAdminUsers(filters?: { search?: string; status?: string; page
 export function useAuditLogs(filters?: { action?: string; page?: number }) {
     return useQuery({
         queryKey: ['admin', 'audit-logs', filters],
-        queryFn : () => apiFetch('GET', '/v1/admin/audit-logs', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/admin/audit-logs', undefined, filters as Record<string, string | number | boolean | undefined>),
         refetchInterval: 30_000, // Poll every 30s for live audit feed
     });
 }
@@ -108,7 +108,7 @@ export function useAuditLogs(filters?: { action?: string; page?: number }) {
 export function useAdminTenants(filters?: { search?: string; status?: string; page?: number }) {
     return useQuery({
         queryKey: ['admin', 'tenants', filters],
-        queryFn : () => apiFetch('GET', '/v1/admin/tenants', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/admin/tenants', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 
@@ -116,7 +116,7 @@ export function useAdminTenants(filters?: { search?: string; status?: string; pa
 export function useAdminCommissions(filters?: { type?: string; page?: number }) {
     return useQuery({
         queryKey: ['admin', 'commissions', filters],
-        queryFn : () => apiFetch('GET', '/v1/admin/commissions', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/admin/commissions', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 

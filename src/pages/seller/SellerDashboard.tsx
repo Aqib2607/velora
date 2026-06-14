@@ -2,7 +2,7 @@ import { BarChart3, Package, DollarSign, AlertTriangle, TrendingUp, RefreshCw, P
 import { Link } from "react-router-dom";
 import { useRegionStore } from "@/store/useRegionStore";
 import { convertAndFormat } from "@/utils/currency";
-import { useSellerStats, useSellerOrders } from "@/hooks/useSellerDashboard";
+import { useSellerStats, useSellerOrders, useSellerAnalytics } from "@/hooks/useSellerDashboard";
 import type { SellerOrder } from "@/hooks/useSellerDashboard";
 import { formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
@@ -32,6 +32,10 @@ const SellerDashboard = () => {
     const { currency, locale } = useRegionStore();
     const stats = useSellerStats();
     const orders = useSellerOrders({ page: 1 });
+    const analytics = useSellerAnalytics('30d');
+
+    const dailyRevenue = analytics.data?.daily_revenue || [];
+    const maxRevenue = Math.max(...dailyRevenue.map(d => d.revenue), 1); // fallback to 1 to avoid / 0
 
     const statCards = stats.data
         ? [
@@ -158,15 +162,23 @@ const SellerDashboard = () => {
                 </div>
                 <Link to="/seller/analytics" className="block">
                     <div className="h-48 flex items-end gap-2 cursor-pointer group">
-                        {[40, 65, 55, 80, 70, 90, 85, 95, 75, 88, 92, 100].map((h, i) => (
-                            <motion.div
-                                key={i}
-                                className="flex-1 rounded-t-lg bg-muted group-hover:bg-foreground transition-all duration-300"
-                                initial={{ height: 0 }}
-                                animate={{ height: `${h}%` }}
-                                transition={{ delay: i * 0.05, duration: 0.5, ease: "easeOut" }}
-                            />
-                        ))}
+                        {dailyRevenue.length > 0 ? (
+                            dailyRevenue.map((d, i) => {
+                                const h = (d.revenue / maxRevenue) * 100;
+                                return (
+                                    <motion.div
+                                        key={i}
+                                        className="flex-1 rounded-t-lg bg-muted group-hover:bg-foreground transition-all duration-300"
+                                        initial={{ height: 0 }}
+                                        animate={{ height: `${h}%` }}
+                                        transition={{ delay: i * 0.02, duration: 0.5, ease: "easeOut" }}
+                                        title={`Revenue: ${d.revenue}`}
+                                    />
+                                );
+                            })
+                        ) : (
+                            <div className="w-full text-center text-sm text-muted-foreground self-center">No revenue data for this period</div>
+                        )}
                     </div>
                 </Link>
                 <p className="text-xs text-center text-muted-foreground mt-3">

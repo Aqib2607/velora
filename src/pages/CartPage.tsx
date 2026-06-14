@@ -1,16 +1,53 @@
 import { Link } from "react-router-dom";
 import { Trash2, Minus, Plus, ShoppingBag, Shield, Truck, RotateCcw } from "lucide-react";
+import { useCartQuery, useRemoveFromCart, useUpdateCartQuantity, type CartItem as AuthCartItem } from "@/hooks/useCartQuery";
 import { useCartStore } from "@/store/cartStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useRegionStore } from "@/store/useRegionStore";
-import { convertAndFormat, convertAmount } from "@/utils/currency";
+import { convertAndFormat } from "@/utils/currency";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Product } from "@/hooks/useProductsQuery";
+
+type GuestCartItem = { product: Product; quantity: number };
 
 const CartPage = () => {
-  const { items, removeItem, updateQuantity, totalPrice, clearCart } = useCartStore();
-  const { currency, locale, taxRate } = useRegionStore();
-  const totalInUSD = totalPrice();
+  const { isAuthenticated } = useAuthStore();
+  const { data: cart } = useCartQuery();
+  const { mutate: removeAuthItem } = useRemoveFromCart();
+  const { mutate: updateAuthQuantity } = useUpdateCartQuantity();
+
+  const localCartItems = useCartStore(state => state.items);
+  const removeLocalItem = useCartStore(state => state.removeItem);
+  const updateLocalQuantity = useCartStore(state => state.updateQuantity);
+  const totalLocalPrice = useCartStore(state => state.totalPrice());
+
+  const isAuth = isAuthenticated;
+  const items = isAuth ? (cart?.items || []) : localCartItems;
+
+  const totalInUSD = isAuth
+    ? items.reduce((sum: number, i: unknown) => sum + ((i as AuthCartItem).unit_price * (i as AuthCartItem).quantity), 0)
+    : totalLocalPrice;
+
+  const { currency, locale } = useRegionStore();
+  const taxRate = 0.08;
   const { t } = useTranslation();
+
+  const handleRemove = (itemId: number, skuId?: number) => {
+    if (isAuth) {
+      removeAuthItem(itemId);
+    } else {
+      removeLocalItem(skuId!);
+    }
+  };
+
+  const handleUpdateQty = (itemId: number, newQty: number, skuId?: number) => {
+    if (isAuth) {
+      updateAuthQuantity({ itemId, quantity: newQty });
+    } else {
+      updateLocalQuantity(skuId!, newQty);
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -49,55 +86,67 @@ const CartPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-4">
           <AnimatePresence>
-          {items.map((item, index) => (
-            <motion.div
-              key={item.product.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -100 }}
-              transition={{ delay: index * 0.05 }}
-              className="flex gap-5 p-5 rounded-2xl border border-border bg-card hover:shadow-sm transition-all duration-300 group"
-            >
-              <Link to={`/product/${item.product.id}`}>
-                <img src={item.product.image} alt={item.product.name} className="h-28 w-28 rounded-xl object-cover group-hover:scale-105 transition-transform duration-300" />
-              </Link>
-              <div className="flex-1 min-w-0">
-                <Link to={`/product/${item.product.id}`}>
-                  <h3 className="font-semibold truncate hover:text-foreground/80 transition-colors text-base">{item.product.name}</h3>
+          {items.map((rawItem: unknown, index: number) => {
+              const isAuthItem = isAuth;
+              const id = isAuthItem ? (rawItem as AuthCartItem).id : (rawItem as GuestCartItem).product.id;
+              const name = isAuthItem ? (rawItem as AuthCartItem).sku.product.name : (rawItem as GuestCartItem).product.name;
+              const price = isAuthItem ? (rawItem as AuthCartItem).unit_price : (rawItem as GuestCartItem).product.price;
+              const qty = (rawItem as AuthCartItem | GuestCartItem).quantity;
+              const image = isAuthItem ? (rawItem as AuthCartItem).sku.product.thumbnail : (rawItem as GuestCartItem).product.thumbnail;
+              const desc = isAuthItem ? (rawItem as AuthCartItem).sku.product.description : (rawItem as GuestCartItem).product.description;
+              const skuId = isAuthItem ? (rawItem as AuthCartItem).sku.id : (rawItem as GuestCartItem).product.id;
+              const productId = isAuthItem ? (rawItem as AuthCartItem).sku.product.id : (rawItem as GuestCartItem).product.id;
+
+              return (
+                <motion.div
+                key={`${id}-${index}`}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ delay: index * 0.05 }}
+                className="flex gap-5 p-5 rounded-2xl border border-border bg-card hover:shadow-sm transition-all duration-300 group"
+              >
+                <Link to={`/product/${productId}`}>
+                  <img src={image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80"} alt={name} className="h-28 w-28 rounded-xl object-cover group-hover:scale-105 transition-transform duration-300" />
                 </Link>
-                <p className="text-sm text-muted-foreground mt-1">{item.product.seller}</p>
-                <p className="font-bold text-lg text-foreground mt-2">{convertAndFormat(item.product.price, currency, locale)}</p>
-                <div className="flex items-center gap-4 mt-3">
-                  <div className="flex items-center rounded-xl border border-border overflow-hidden">
+                <div className="flex-1 min-w-0">
+                  <Link to={`/product/${productId}`}>
+                    <h3 className="font-semibold truncate hover:text-foreground/80 transition-colors text-base">{name}</h3>
+                  </Link>
+                  <p className="text-sm text-muted-foreground mt-1">{desc?.substring(0, 50)}</p>
+                  <p className="font-bold text-lg text-foreground mt-2">{convertAndFormat(price, currency, locale)}</p>
+                  <div className="flex items-center gap-4 mt-3">
+                    <div className="flex items-center rounded-xl border border-border overflow-hidden">
+                      <motion.button
+                        onClick={() => { if (qty > 1) handleUpdateQty(id, qty - 1, skuId) }}
+                        className="p-2 hover:bg-muted/50 transition-colors"
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </motion.button>
+                      <span className="px-4 text-sm font-semibold tabular-nums">{qty}</span>
+                      <motion.button
+                        onClick={() => handleUpdateQty(id, qty + 1, skuId)}
+                        className="p-2 hover:bg-muted/50 transition-colors"
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </motion.button>
+                    </div>
                     <motion.button
-                      onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                      className="p-2 hover:bg-muted/50 transition-colors"
+                      onClick={() => handleRemove(id, skuId)}
+                      className="text-destructive hover:bg-destructive/10 p-2 rounded-xl transition-all"
+                      whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                     >
-                      <Minus className="h-3.5 w-3.5" />
-                    </motion.button>
-                    <span className="px-4 text-sm font-semibold tabular-nums">{item.quantity}</span>
-                    <motion.button
-                      onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                      className="p-2 hover:bg-muted/50 transition-colors"
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </motion.button>
                   </div>
-                  <motion.button
-                    onClick={() => removeItem(item.product.id)}
-                    className="text-destructive hover:bg-destructive/10 p-2 rounded-xl transition-all"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </motion.button>
                 </div>
-              </div>
-              <p className="font-bold text-lg shrink-0">{convertAndFormat(item.product.price * item.quantity, currency, locale)}</p>
-            </motion.div>
-          ))}
+                <p className="font-bold text-lg shrink-0">{convertAndFormat(price * qty, currency, locale)}</p>
+              </motion.div>
+            )
+          })}
           </AnimatePresence>
         </div>
 

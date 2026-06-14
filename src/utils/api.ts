@@ -3,7 +3,7 @@
  * Provides a simple, axios-like interface for making HTTP requests
  */
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   data: T;
   status: number;
   statusText: string;
@@ -20,10 +20,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api"
 /**
  * Fetch wrapper with error handling
  */
-async function makeRequest<T = any>(
+async function makeRequest<T = unknown>(
   method: string,
   url: string,
-  data?: any,
+  data?: Record<string, unknown> | FormData | string | number | boolean | null,
   headers: Record<string, string> = {}
 ): Promise<ApiResponse<T>> {
   const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
@@ -47,7 +47,7 @@ async function makeRequest<T = any>(
     });
 
     const contentType = response.headers.get("content-type");
-    let responseData: any;
+    let responseData: unknown;
 
     if (contentType?.includes("application/json")) {
       responseData = await response.json();
@@ -68,7 +68,7 @@ async function makeRequest<T = any>(
     }
 
     return {
-      data: responseData,
+      data: responseData as T,
       status: response.status,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries()),
@@ -87,19 +87,19 @@ async function makeRequest<T = any>(
  * Provides GET, POST, PUT, PATCH, DELETE methods
  */
 const api = {
-  get: <T = any>(url: string, headers?: Record<string, string>) =>
+  get: <T = unknown>(url: string, headers?: Record<string, string>) =>
     makeRequest<T>("GET", url, undefined, headers),
 
-  post: <T = any>(url: string, data?: any, headers?: Record<string, string>) =>
-    makeRequest<T>("POST", url, data, headers),
+  post: <T = unknown, D = Record<string, unknown>>(url: string, data?: D, headers?: Record<string, string>) =>
+    makeRequest<T>("POST", url, data as Record<string, unknown>, headers),
 
-  put: <T = any>(url: string, data?: any, headers?: Record<string, string>) =>
-    makeRequest<T>("PUT", url, data, headers),
+  put: <T = unknown, D = Record<string, unknown>>(url: string, data?: D, headers?: Record<string, string>) =>
+    makeRequest<T>("PUT", url, data as Record<string, unknown>, headers),
 
-  patch: <T = any>(url: string, data?: any, headers?: Record<string, string>) =>
-    makeRequest<T>("PATCH", url, data, headers),
+  patch: <T = unknown, D = Record<string, unknown>>(url: string, data?: D, headers?: Record<string, string>) =>
+    makeRequest<T>("PATCH", url, data as Record<string, unknown>, headers),
 
-  delete: <T = any>(url: string, headers?: Record<string, string>) =>
+  delete: <T = unknown>(url: string, headers?: Record<string, string>) =>
     makeRequest<T>("DELETE", url, undefined, headers),
 };
 

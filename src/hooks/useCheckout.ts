@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useCartStore } from '@/store/cartStore';
+import { useClearCart } from '@/hooks/useCartQuery';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -44,7 +44,7 @@ interface PlaceOrderResponse {
  *  4. Stripe webhook → backend confirms inventory + posts ledger entries
  */
 export function usePlaceOrder() {
-    const { clearCart } = useCartStore();
+    const { mutate: clearCart } = useClearCart();
     const navigate      = useNavigate();
 
     return useMutation({
@@ -68,7 +68,7 @@ export function usePlaceOrder() {
  * Clears cart and redirects to order confirmation.
  */
 export function useOrderSuccess() {
-    const { clearCart } = useCartStore();
+    const { mutate: clearCart } = useClearCart();
     const navigate      = useNavigate();
 
     return (orderNumber: string) => {

@@ -2,7 +2,7 @@ import { DealItem } from "@/hooks/useDealsQuery";
 import DealCountdown from "./DealCountdown";
 import { useRegionStore } from "@/store/useRegionStore";
 import { Star, ShoppingCart } from "lucide-react";
-import { useCartStore } from "@/store/cartStore";
+import { useAddToCart } from "@/hooks/useCartQuery";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -13,7 +13,7 @@ interface DealCardProps {
 const DealCard = ({ deal }: DealCardProps) => {
     const { currency } = useRegionStore();
     const { t, i18n } = useTranslation();
-    const addItem = useCartStore((s) => s.addItem);
+    const { mutate: addToCart } = useAddToCart();
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat(i18n.language, {
@@ -23,23 +23,10 @@ const DealCard = ({ deal }: DealCardProps) => {
     };
 
     const handleAddToCart = () => {
-        addItem({
-            id: deal.id,
-            name: deal.title,
-            price: deal.discountPrice,
-            originalPrice: deal.originalPrice,
-            image: deal.image,
-            category: deal.category,
-            rating: deal.rating,
-            reviewCount: deal.reviewsCount,
-            seller: deal.brand,
-            stock: deal.stockTotal,
-            description: deal.title
-        });
-        toast.success(`${deal.title} added to cart!`);
+        addToCart({ sku_id: Number(deal.id), quantity: 1 });
     };
 
-    const stockPercentage = Math.round((deal.stockRemaining / deal.stockTotal) * 100);
+    const stockPercentage = deal.claimedPercentage ?? 50;
 
     return (
         <div className="group flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-[1.02] overflow-hidden">
@@ -47,7 +34,7 @@ const DealCard = ({ deal }: DealCardProps) => {
             {/* Image Block */}
             <div className="relative aspect-square overflow-hidden bg-gray-50 flex items-center justify-center p-4">
                 <img
-                    src={deal.image}
+                    src={deal.imageUrl}
                     alt={deal.title}
                     className="object-contain w-full h-full mix-blend-multiply transition-transform duration-500 group-hover:scale-110"
                     loading="lazy"
@@ -59,16 +46,12 @@ const DealCard = ({ deal }: DealCardProps) => {
                     <span className="uppercase text-[9px] font-bold tracking-wider opacity-80 leading-none">OFF</span>
                 </div>
 
-                {deal.isLightningDeal && (
-                    <div className="absolute top-3 right-3 bg-red-600 text-white font-bold text-xs px-2 py-1 rounded-sm shadow-sm z-10 uppercase tracking-tighter animate-pulse">
-                        Lightning Deal
-                    </div>
-                )}
+                {/* Lightning Deal badge omitted for now */}
             </div>
 
             {/* Content Block */}
             <div className="p-4 flex flex-col flex-1">
-                <DealCountdown endTimeISO={deal.endTimeISO} />
+                <DealCountdown endTimeISO={deal.endsAtISO || new Date(Date.now() + 86400000).toISOString()} />
 
                 <h3 className="font-semibold text-gray-800 line-clamp-2 text-sm leading-snug mb-1">
                     {deal.title}
@@ -84,7 +67,7 @@ const DealCard = ({ deal }: DealCardProps) => {
                         ))}
                     </div>
                     <span className="text-xs text-blue-600 hover:underline cursor-pointer">
-                        {deal.reviewsCount.toLocaleString()}
+                        {deal.reviewCount.toLocaleString()}
                     </span>
                 </div>
 

@@ -1,8 +1,9 @@
-import { motion } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { forwardRef, useState } from "react";
 
-interface PremiumInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface PremiumInputProps extends Omit<HTMLMotionProps<"input">, "ref" | "className"> {
+  className?: string;
   label?: string;
   error?: string;
   helperText?: string;

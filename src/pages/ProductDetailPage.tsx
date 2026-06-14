@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { Star, ShoppingCart, ChevronRight, Minus, Plus, Heart, Shield, Truck, RotateCcw, Share2 } from "lucide-react";
 import { useState } from "react";
 import { useProductsQuery } from "@/hooks/useProductsQuery";
-import { useCartStore } from "@/store/cartStore";
+import { useAddToCart } from "@/hooks/useCartQuery";
 import { useRegionStore } from "@/store/useRegionStore";
 import { convertAndFormat } from "@/utils/currency";
 import ProductCard from "@/components/ProductCard";
@@ -12,7 +12,7 @@ const ProductDetailPage = () => {
   const { id } = useParams();
   const { data: products = [] } = useProductsQuery();
   const product = products.find((p) => String(p.id) === id);
-  const addItem = useCartStore((s) => s.addItem);
+  const { mutate: addToCart } = useAddToCart();
   const { currency, locale } = useRegionStore();
   const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState<"description" | "reviews">("description");
@@ -40,7 +40,7 @@ const ProductDetailPage = () => {
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
         <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
         <ChevronRight className="h-3 w-3" />
-        <Link to={`/category/${product.category.toLowerCase()}`} className="hover:text-foreground transition-colors">{product.category}</Link>
+        <Link to={`/category/${(typeof product.category === 'object' ? (product.category?.name || '') : product.category || '').toLowerCase()}`} className="hover:text-foreground transition-colors">{typeof product.category === 'object' ? product.category?.name : product.category}</Link>
         <ChevronRight className="h-3 w-3" />
         <span className="text-foreground font-medium truncate max-w-[200px]">{product.name}</span>
       </nav>
@@ -71,7 +71,7 @@ const ProductDetailPage = () => {
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-foreground/80 font-semibold mb-2">{product.seller}</p>
+              <p className="text-sm text-foreground/80 font-semibold mb-2">{typeof product.seller === 'object' ? product.seller?.company_name : product.seller}</p>
               <h1 className="font-display text-3xl lg:text-4xl font-bold tracking-tight mb-4">{product.name}</h1>
             </div>
             <div className="flex gap-2">
@@ -154,7 +154,7 @@ const ProductDetailPage = () => {
           {/* CTA */}
           <div className="flex gap-3 mb-8">
             <motion.button
-              onClick={() => { for (let i = 0; i < qty; i++) addItem(product); }}
+              onClick={() => addToCart({ sku_id: product.skus?.[0]?.id || product.id, quantity: qty })}
               className="flex-1 flex items-center justify-center gap-2.5 rounded-2xl bg-foreground px-6 py-4 font-semibold text-background shadow-sm hover:-translate-y-0.5 transition-all duration-300"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

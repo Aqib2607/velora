@@ -247,7 +247,7 @@ export const setupPerformanceObservers = (): void => {
   try {
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        const perfEntry = entry as PerformanceLongTaskTiming;
+        const perfEntry = entry;
         trackMetric('performance_long_task_ms', Math.round(perfEntry.duration), 'ms', {
           name: perfEntry.name.substring(0, 50),
         });

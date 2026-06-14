@@ -53,6 +53,15 @@ class CartController extends Controller
         return response()->json(['status' => 'success', 'data' => ['message' => 'Item removed.']]);
     }
 
+    public function updateItem(Request $request, CartItem $item): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
+        $item->update(['quantity' => $validated['quantity']]);
+        return response()->json(['status' => 'success', 'data' => $item->cart->fresh('items.sku')]);
+    }
+
     public function clear(Request $request): JsonResponse
     {
         Cart::where('user_id', $request->user()->id)->where('status', 'active')

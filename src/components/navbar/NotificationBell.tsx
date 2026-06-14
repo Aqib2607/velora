@@ -3,6 +3,7 @@ import { Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/utils/api";
+import { motion } from "framer-motion";
 
 interface Notification {
     id: number;
@@ -26,7 +27,7 @@ const NotificationBell = () => {
 
     const fetchUnreadCount = async () => {
         try {
-            const res = await api.get('/notifications/unread-count');
+            const res = await api.get<{data: {count: number}}>('/notifications/unread-count');
             setUnreadCount(res.data.data.count);
         } catch (error) {
             console.error('Failed to fetch unread count', error);
@@ -35,7 +36,7 @@ const NotificationBell = () => {
 
     const fetchNotifications = async () => {
         try {
-            const res = await api.get('/notifications');
+            const res = await api.get<{data: {data: Notification[]}}>('/notifications');
             setNotifications(res.data.data.data);
         } catch (error) {
             console.error('Failed to fetch notifications', error);
@@ -63,18 +64,18 @@ const NotificationBell = () => {
 
     return (
         <div className="relative">
-            <button
+            <motion.button
                 onClick={handleToggle}
-                className="flex items-center justify-center hover:bg-white/10 border border-transparent p-2 rounded-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer text-white relative focus-visible:outline-none"
+                className="relative p-2.5 rounded-xl hover:bg-muted/50 transition-all duration-200"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 aria-label="Notifications"
             >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-[18px] w-[18px]" />
                 {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
+                    <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-foreground rounded-full ring-2 ring-background animate-pulse-subtle" />
                 )}
-            </button>
+            </motion.button>
 
             {isOpen && (
                 <>

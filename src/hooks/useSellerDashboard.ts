@@ -85,7 +85,7 @@ export function useSellerStats() {
 export function useSellerProducts(filters?: { status?: string; search?: string; page?: number }) {
     return useQuery({
         queryKey: ['seller', 'products', filters],
-        queryFn : () => apiFetch('GET', '/v1/seller-dashboard/products', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/seller-dashboard/products', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 
@@ -93,7 +93,7 @@ export function useSellerProducts(filters?: { status?: string; search?: string; 
 export function useSellerOrders(filters?: { status?: string; page?: number }) {
     return useQuery({
         queryKey: ['seller', 'orders', filters],
-        queryFn : () => apiFetch('GET', '/v1/seller-dashboard/orders', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/seller-dashboard/orders', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 
@@ -117,7 +117,7 @@ export function useSellerAnalytics(period: '7d' | '30d' | '90d' | '12m' = '30d')
 export function useSellerRefunds(filters?: { status?: string; page?: number }) {
     return useQuery({
         queryKey: ['seller', 'refunds', filters],
-        queryFn : () => apiFetch('GET', '/v1/refunds', undefined, filters as Record<string, unknown>),
+        queryFn : () => apiFetch('GET', '/v1/refunds', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 

@@ -4,9 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
-const CATEGORIES = ["Electronics", "Fashion", "Home & Kitchen", "Beauty", "Sports"];
-const BRANDS = ["Sony", "Samsung", "Nike", "Apple", "Dell"];
+import { useCategoriesQuery } from "@/hooks/useCategoriesQuery";
 
 const DealsFilterSidebar = () => {
     const {
@@ -19,10 +17,10 @@ const DealsFilterSidebar = () => {
         setCategory,
         setPriceRange,
         setMinDiscount,
-        toggleBrand,
         setPrimeOnly,
         resetFilters
     } = useDealsFilterStore();
+    const { data: categories = [] } = useCategoriesQuery();
 
     return (
         <div className="hidden lg:flex flex-col w-64 flex-shrink-0 sticky top-20 h-[calc(100vh-80px)] overflow-y-auto pr-6 custom-scrollbar">
@@ -68,13 +66,13 @@ const DealsFilterSidebar = () => {
                             >
                                 All Departments
                             </button>
-                            {CATEGORIES.map(cat => (
+                            {categories.map(cat => (
                                 <button
-                                    key={cat}
-                                    onClick={() => setCategory(cat)}
-                                    className={`text-left text-sm transition-colors ${category === cat ? "text-[#6a329f] font-bold" : "text-gray-600 hover:text-black"}`}
+                                    key={cat.id}
+                                    onClick={() => setCategory(cat.name)}
+                                    className={`text-left text-sm transition-colors ${category === cat.name ? "text-[#6a329f] font-bold" : "text-gray-600 hover:text-black"}`}
                                 >
-                                    {cat}
+                                    {cat.name}
                                 </button>
                             ))}
                         </div>
@@ -128,31 +126,7 @@ const DealsFilterSidebar = () => {
                     </AccordionContent>
                 </AccordionItem>
 
-                {/* Brands */}
-                <AccordionItem value="brand" className="border-none">
-                    <AccordionTrigger className="font-bold py-2 hover:no-underline hover:text-[#6a329f]">
-                        Brands
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-2 pl-1">
-                        <div className="flex flex-col gap-3">
-                            {BRANDS.map(brand => (
-                                <div key={brand} className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id={`brand-${brand}`}
-                                        checked={brands.includes(brand)}
-                                        onCheckedChange={() => toggleBrand(brand)}
-                                    />
-                                    <Label
-                                        htmlFor={`brand-${brand}`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-gray-700"
-                                    >
-                                        {brand}
-                                    </Label>
-                                </div>
-                            ))}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
+
 
             </Accordion>
         </div>

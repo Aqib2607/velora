@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart, Star, Heart } from "lucide-react";
-import { useCartStore } from "@/store/cartStore";
+import { useAddToCart } from "@/hooks/useCartQuery";
 import { useRegionStore } from "@/store/useRegionStore";
 import { convertAndFormat } from "@/utils/currency";
 import type { Product } from "@/hooks/useProductsQuery";
 
 const ProductCard = ({ product }: { product: Product }) => {
-  const addItem = useCartStore((s) => s.addItem);
+  const { mutate: addToCart } = useAddToCart();
   const { currency, locale } = useRegionStore();
 
   return (
@@ -41,9 +41,9 @@ const ProductCard = ({ product }: { product: Product }) => {
             </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-1">by {product.seller}</p>
+        <p className="text-xs text-muted-foreground mt-1">by {typeof product.seller === 'object' ? product.seller?.company_name : product.seller}</p>
         <button
-          onClick={() => addItem(product)}
+          onClick={(e) => { e.preventDefault(); addToCart({ sku_id: product.skus?.[0]?.id || product.id, quantity: 1 }); }}
           className="mt-3 w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
         >
           Add to Cart

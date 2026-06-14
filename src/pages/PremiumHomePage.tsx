@@ -5,17 +5,19 @@ import { useRef } from "react";
 import PremiumHero from "@/components/PremiumHero";
 import PremiumProductCard from "@/components/PremiumProductCard";
 import { useProductsQuery } from "@/hooks/useProductsQuery";
+import { useCategoriesQuery } from "@/hooks/useCategoriesQuery";
 
 // -- Animation Utilities
 const fadeInReveal = {
   initial: { opacity: 0, y: 40 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-100px" },
-  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
 };
 
 export default function PremiumHomePage() {
   const { data: products = [] } = useProductsQuery();
+  const { data: categoryData = [] } = useCategoriesQuery();
   const targetRef = useRef<HTMLDivElement>(null);
   
   // Subtle parallax for a specific section
@@ -26,18 +28,7 @@ export default function PremiumHomePage() {
   const y = useTransform(scrollYProgress, [0, 1], [100, -100]);
 
   // Derive products
-  const curatedProducts = products.slice(0, 4).map((p, i) => ({
-    ...p,
-    seller: ["STUDIO NOUVEAU", "ESSENTIALS", "AURA", "MINIMAL"][i],
-    badge: i === 0 ? "New Arrival" : i === 3 ? "Limited" : undefined
-  }));
-
-  const bentoImages = [
-    "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2942&auto=format&fit=crop", // Fashion
-    "https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=2940&auto=format&fit=crop", // Home
-    "https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=2940&auto=format&fit=crop", // Tech
-    "https://images.unsplash.com/photo-1627384113743-6bd5a479fffd?q=80&w=2940&auto=format&fit=crop", // Beauty
-  ];
+  const curatedProducts = products.slice(0, 4);
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white pb-32">
@@ -68,34 +59,40 @@ export default function PremiumHomePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-auto md:h-[70vh]">
           {/* Large Left Item */}
-          <Link to="/category/fashion" className="group relative block md:col-span-2 rounded-2xl overflow-hidden bg-neutral-100 aspect-square md:aspect-auto">
-            <img src={bentoImages[0]} alt="Fashion" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
-            <div className="absolute bottom-8 left-8 text-white">
-              <h3 className="text-3xl font-display font-bold tracking-tight mb-2">Apparel & Fashion</h3>
-              <p className="font-medium tracking-wide">Explore 10,000+ items</p>
-            </div>
-          </Link>
+          {categoryData[0] && (
+            <Link to={`/category/${categoryData[0].slug}`} className="group relative block md:col-span-2 rounded-2xl overflow-hidden bg-neutral-100 aspect-square md:aspect-auto">
+              <img src={categoryData[0].image || ''} alt={categoryData[0].name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
+              <div className="absolute bottom-8 left-8 text-white">
+                <h3 className="text-3xl font-display font-bold tracking-tight mb-2">{categoryData[0].name}</h3>
+                <p className="font-medium tracking-wide">Explore items</p>
+              </div>
+            </Link>
+          )}
           
           {/* Right Stack */}
           <div className="grid grid-rows-2 gap-4 h-full md:col-span-1">
-            <Link to="/category/home" className="group relative block rounded-2xl overflow-hidden bg-neutral-100 aspect-square md:aspect-auto">
-              <img src={bentoImages[1]} alt="Home" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
-              <div className="absolute bottom-6 left-6 text-white">
-                <h3 className="text-2xl font-display font-bold tracking-tight mb-1">Living</h3>
-                <p className="text-sm font-medium">Curated spaces</p>
-              </div>
-            </Link>
+            {categoryData[1] && (
+              <Link to={`/category/${categoryData[1].slug}`} className="group relative block rounded-2xl overflow-hidden bg-neutral-100 aspect-square md:aspect-auto">
+                <img src={categoryData[1].image || ''} alt={categoryData[1].name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
+                <div className="absolute bottom-6 left-6 text-white">
+                  <h3 className="text-2xl font-display font-bold tracking-tight mb-1">{categoryData[1].name}</h3>
+                  <p className="text-sm font-medium">Curated spaces</p>
+                </div>
+              </Link>
+            )}
             
-            <Link to="/category/tech" className="group relative block rounded-2xl overflow-hidden bg-neutral-100 aspect-square md:aspect-auto">
-              <img src={bentoImages[2]} alt="Tech" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
-              <div className="absolute bottom-6 left-6 text-white">
-                <h3 className="text-2xl font-display font-bold tracking-tight mb-1">Technology</h3>
-                <p className="text-sm font-medium">Latest innovations</p>
-              </div>
-            </Link>
+            {categoryData[2] && (
+              <Link to={`/category/${categoryData[2].slug}`} className="group relative block rounded-2xl overflow-hidden bg-neutral-100 aspect-square md:aspect-auto">
+                <img src={categoryData[2].image || ''} alt={categoryData[2].name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
+                <div className="absolute bottom-6 left-6 text-white">
+                  <h3 className="text-2xl font-display font-bold tracking-tight mb-1">{categoryData[2].name}</h3>
+                  <p className="text-sm font-medium">Latest innovations</p>
+                </div>
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -153,45 +150,7 @@ export default function PremiumHomePage() {
               </div>
             </motion.div>
 
-            <motion.div 
-              {...fadeInReveal}
-              className="relative aspect-square rounded-3xl overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xl p-8 lg:p-12"
-            >
-              <div className="w-full h-full border border-neutral-100 dark:border-neutral-800 rounded-2xl flex flex-col relative overflow-hidden bg-neutral-50/50 dark:bg-black/50">
-                {/* Mock UI Dashboard */}
-                <div className="h-12 border-b border-neutral-200 dark:border-neutral-800 flex items-center px-4 gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-amber-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
-                </div>
-                <div className="p-8 flex flex-col gap-6 flex-1">
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <div className="text-sm font-semibold text-neutral-400 uppercase tracking-widest mb-2">Total Revenue</div>
-                      <div className="font-display text-4xl font-bold tracking-tight">$428,910.00</div>
-                    </div>
-                    <div className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-bold">
-                      +24.5%
-                    </div>
-                  </div>
-                  
-                  {/* Mock Chart lines */}
-                  <div className="flex-1 flex items-end gap-2 mt-8">
-                    {[30, 45, 25, 60, 75, 45, 80, 50, 90, 100].map((h, i) => (
-                      <motion.div 
-                        key={i} 
-                        initial={{ height: 0 }}
-                        whileInView={{ height: `${h}%` }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.2 + (i * 0.1), duration: 0.8, ease: "easeOut" }}
-                        className="flex-1 bg-primary rounded-t-sm"
-                        style={{ opacity: 0.3 + (i * 0.07) }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+
           </div>
         </div>
       </section>

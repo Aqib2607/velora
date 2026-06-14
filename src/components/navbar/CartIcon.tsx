@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
-import { useCartStore } from "@/store/cartStore";
+import { useCartQuery } from "@/hooks/useCartQuery";
 import { useTranslation } from "react-i18next";
 
 const CartIcon = () => {
-    const totalItems = useCartStore((s) => s.totalItems());
+    const { data: cart } = useCartQuery();
+    const totalItems = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
     const { t } = useTranslation();
 
     return (

@@ -2,19 +2,16 @@
 
 namespace App\Models;
 
-use App\Models\Traits\HasTenantScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Inventory extends Model
 {
-    use HasTenantScope;
 
     protected $table = 'inventory';
 
     protected $fillable = [
-        'tenant_id',
         'sku_id',
         'quantity_available',
         'quantity_reserved',

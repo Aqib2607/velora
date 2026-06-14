@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import CategoryDropdown from "./CategoryDropdown";
 import { useTranslation } from "react-i18next";
 import api from "@/utils/api";
+import { Product } from "@/types/domain";
 
 const SearchBar = () => {
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("all");
-    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [suggestions, setSuggestions] = useState<Product[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -21,7 +22,7 @@ const SearchBar = () => {
                 return;
             }
             try {
-                const res = await api.get(`/search/autocomplete?q=${encodeURIComponent(query)}`);
+                const res = await api.get<{data: {products: Product[]}}>(`/search/autocomplete?q=${encodeURIComponent(query)}`);
                 setSuggestions(res.data.data.products || []);
             } catch (err) {
                 console.error(err);

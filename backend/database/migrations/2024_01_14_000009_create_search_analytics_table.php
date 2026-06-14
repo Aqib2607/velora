@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('clicked_product_id')->nullable()->constrained('products')->nullOnDelete();
             $table->timestamp('clicked_at')->nullable();
             $table->string('session_id')->nullable();
-            $table->timestamp('searched_at');
+            $table->timestamp('searched_at')->useCurrent();
             $table->timestamps();
 
             $table->index(['tenant_id', 'searched_at']);

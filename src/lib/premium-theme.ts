@@ -170,10 +170,10 @@ export const premiumTheme = {
 // Theme utilities
 export const getThemeValue = (theme: 'light' | 'dark', path: string) => {
   const keys = path.split('.');
-  let value: any = premiumTheme[theme];
+  let value: unknown = premiumTheme[theme];
   
   for (const key of keys) {
-    value = value?.[key];
+    value = (value as Record<string, unknown>)?.[key];
   }
   
   return value;

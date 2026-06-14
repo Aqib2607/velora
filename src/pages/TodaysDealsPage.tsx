@@ -9,7 +9,6 @@ import DealCountdown from "@/components/deals/DealCountdown";
 const endOfDay = new Date();
 endOfDay.setHours(23, 59, 59, 999);
 
-const quickFilters = ["Lightning Deals", "Clearance", "Under $25", "Prime Early Access"];
 
 const TodaysDealsPage = () => {
     const [page, setPage] = useState(1);
@@ -40,14 +39,7 @@ const TodaysDealsPage = () => {
                             </p>
                         </div>
 
-                        {/* Quick filter styling chips */}
-                        <div className="flex flex-wrap gap-2">
-                            {quickFilters.map((q) => (
-                                <button key={q} className="bg-background hover:bg-muted/50 border border-border transition-all text-sm font-semibold px-4 py-2 rounded-full cursor-not-allowed hidden md:block">
-                                    {q}
-                                </button>
-                            ))}
-                        </div>
+
                     </div>
                 </div>
             </section>

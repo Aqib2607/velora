@@ -5,6 +5,12 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import ThemeToggle from "../ThemeToggle";
+import { useCategoriesQuery } from "@/hooks/useCategoriesQuery";
+import { useLocationStore } from "@/store/useLocationStore";
+import { useCartStore } from "@/store/cartStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import NotificationBell from "./NotificationBell";
+import CartDropdown from "./CartDropdown";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -27,6 +33,8 @@ const PremiumNavbar = () => {
   const [searchFocused, setSearchFocused] = useState(false);
   const { scrollY } = useScroll();
   const searchRef = useRef<HTMLInputElement>(null);
+  
+  const { displayName, fetchLocation, isLoading } = useLocationStore();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -45,9 +53,8 @@ const PremiumNavbar = () => {
     { label: "Sell", href: "/sell" },
   ];
 
-  const categories = [
-    'Electronics', 'Fashion', 'Home & Living', 'Beauty', 'Sports', 'Books', 'Toys', 'Automotive'
-  ];
+  const { data: categoryData = [] } = useCategoriesQuery();
+  const categories = categoryData.slice(0, 8);
 
   return (
     <motion.header
@@ -96,12 +103,16 @@ const PremiumNavbar = () => {
                 <MapPin className="h-4 w-4 text-foreground group-hover:scale-110 transition-transform" />
                 <div className="flex flex-col items-start">
                   <span className="text-[10px] text-muted-foreground leading-tight">Deliver to</span>
-                  <span className="font-semibold text-xs leading-tight">New York 10001</span>
+                  <span className="font-semibold text-xs leading-tight">
+                    {isLoading ? "Locating..." : displayName || "Unknown Location"}
+                  </span>
                 </div>
                 <ChevronDown className="h-3 w-3 text-muted-foreground" />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-background/90 backdrop-blur-xl rounded-xl border-border p-1">
-                <DropdownMenuItem className="rounded-lg">Update location</DropdownMenuItem>
+                <DropdownMenuItem className="rounded-lg" onClick={() => fetchLocation()}>
+                  Update location
+                </DropdownMenuItem>
                 <DropdownMenuItem className="rounded-lg">View all addresses</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -161,14 +172,7 @@ const PremiumNavbar = () => {
               </DropdownMenu>
 
               {/* Notifications */}
-              <motion.button
-                className="relative p-2.5 rounded-xl hover:bg-muted/50 transition-all duration-200"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Bell className="h-[18px] w-[18px]" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-foreground rounded-full ring-2 ring-background animate-pulse-subtle" />
-              </motion.button>
+              <NotificationBell />
 
               {/* Account */}
               <DropdownMenu>
@@ -214,23 +218,7 @@ const PremiumNavbar = () => {
               </Link>
 
               {/* Cart */}
-              <Link to="/cart">
-                <motion.button
-                  className="relative p-2.5 rounded-xl hover:bg-muted/50 transition-all duration-200"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  <motion.span
-                    className="absolute -top-0.5 -right-0.5 h-5 w-5 bg-foreground text-background text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                  >
-                    3
-                  </motion.span>
-                </motion.button>
-              </Link>
+              <CartDropdown />
 
               {/* Mobile Menu */}
               <Sheet>
@@ -265,11 +253,11 @@ const PremiumNavbar = () => {
                     <div className="px-5 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Categories</div>
                     {categories.map((cat) => (
                       <Link
-                        key={cat}
-                        to={`/category/${cat.toLowerCase()}`}
+                        key={cat.id}
+                        to={`/category/${cat.slug}`}
                         className="flex items-center px-5 py-3 text-sm hover:bg-muted/50 transition-colors font-medium"
                       >
-                        {cat}
+                        {cat.name}
                       </Link>
                     ))}
                     <div className="h-px bg-border mx-5 my-3" />
@@ -355,11 +343,11 @@ const PremiumNavbar = () => {
               {/* Categories */}
               {categories.slice(0, 4).map((category) => (
                 <Link
-                  key={category}
-                  to={`/category/${category.toLowerCase()}`}
+                  key={category.id}
+                  to={`/category/${category.slug}`}
                   className="text-[13px] font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted/30 transition-all duration-200"
                 >
-                  {category}
+                  {category.name}
                 </Link>
               ))}
 

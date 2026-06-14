@@ -1,0 +1,1 @@
+const c={USD:1,EUR:.92,BDT:110.5},e=(n,t)=>{const r=c[t]||1;return n*r},s=(n,t,r)=>new Intl.NumberFormat(r,{style:"currency",currency:t}).format(n),m=(n,t,r)=>{const o=e(n,t);return s(o,t,r)};export{m as c};

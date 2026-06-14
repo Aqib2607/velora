@@ -12,11 +12,6 @@ const SellPage = () => {
     const { t } = useTranslation();
     const { currency, country: region } = useRegionStore();
 
-    // Calculator State
-    const [calcPrice, setCalcPrice] = useState<number>(100);
-    const [calcCategory, setCalcCategory] = useState<string>('electronics');
-    const [calcFulfill, setCalcFulfill] = useState<'seller' | 'velora'>('velora');
-
     // Seller Signup Form State
     const [sellerForm, setSellerForm] = useState({ businessName: '', email: '', phone: '', country: region });
 
@@ -26,30 +21,6 @@ const SellPage = () => {
         { question: t("sell.faq3_q", "How do I get paid?"), answer: t("sell.faq3_a", `Payments are automatically deposited into your registered bank account every 14 days in ${currency}, minus any seller fees.`) },
         { question: t("sell.faq4_q", "Can I sell internationally?"), answer: t("sell.faq4_a", "Yes! You can instantly list your products globally. Velora handles currency conversion and global shipping logistics.") }
     ];
-
-    // Dummy commission logic
-    const getCommissionRate = (category: string) => {
-        switch (category) {
-            case 'electronics': return 0.08;
-            case 'clothing': return 0.15;
-            case 'home': return 0.12;
-            case 'books': return 0.10;
-            default: return 0.10;
-        }
-    };
-
-    const calculateProfit = () => {
-        const commission = calcPrice * getCommissionRate(calcCategory);
-        const fulfillmentFee = calcFulfill === 'velora' ? 4.50 : 0; // Flat fee simulation
-        const profit = calcPrice - commission - fulfillmentFee;
-        return {
-            commission: commission.toFixed(2),
-            fee: fulfillmentFee.toFixed(2),
-            profit: profit > 0 ? profit.toFixed(2) : '0.00'
-        };
-    };
-
-    const results = calculateProfit();
 
     return (
         <PageLayout>
@@ -71,84 +42,7 @@ const SellPage = () => {
                 </div>
             </SectionBlock>
 
-            <SectionBlock bgWhite title={t("sell.calc_title", "Estimate Your Margins")} subtitle={t("sell.calc_subtitle", "See how much you could earn on each sale.")}>
-                <div className="max-w-4xl mx-auto bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl shadow-lg p-6 sm:p-10 flex flex-col lg:flex-row gap-10">
 
-                    {/* Controls */}
-                    <div className="flex-1 space-y-6">
-                        <div>
-                            <label className="block text-sm font-semibold mb-2 text-[#131921] dark:text-gray-200">Item Price</label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">{currency}</span>
-                                <input
-                                    type="number" min="1" value={calcPrice} onChange={e => setCalcPrice(Number(e.target.value))}
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 focus:ring-2 focus:ring-[#6a329f] outline-none dark:text-white"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-2 text-[#131921] dark:text-gray-200">Product Category</label>
-                            <select value={calcCategory} onChange={e => setCalcCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 focus:ring-2 focus:ring-[#6a329f] outline-none dark:text-white appearance-none">
-                                <option value="electronics">Electronics (8%)</option>
-                                <option value="clothing">Clothing & Apparel (15%)</option>
-                                <option value="home">Home & Kitchen (12%)</option>
-                                <option value="books">Books & Media (10%)</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-2 text-[#131921] dark:text-gray-200">Fulfillment Method</label>
-                            <div className="flex p-1 bg-gray-100 dark:bg-zinc-800 rounded-xl">
-                                <button
-                                    onClick={() => setCalcFulfill('seller')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${calcFulfill === 'seller' ? 'bg-white dark:bg-zinc-700 shadow-sm text-[#131921] dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                                >
-                                    Fulfill Yourself
-                                </button>
-                                <button
-                                    onClick={() => setCalcFulfill('velora')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${calcFulfill === 'velora' ? 'bg-[#6a329f] shadow-sm text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                                >
-                                    Fulfilled by Velora
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Results Board */}
-                    <div className="w-full lg:w-1/2 shrink-0 bg-gray-50 dark:bg-black/20 rounded-2xl p-6 sm:p-8 flex flex-col justify-center border border-gray-100 dark:border-zinc-800">
-                        <h3 className="text-xl font-bold mb-6 text-center text-[#131921] dark:text-white">Estimated Revenue Breakdown</h3>
-
-                        <div className="space-y-4 font-medium mb-6">
-                            <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
-                                <span>Sale Price</span>
-                                <span className="text-[#131921] dark:text-white">{currency}{calcPrice.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-red-500/80">
-                                <span>Commission ({(getCommissionRate(calcCategory) * 100).toFixed(0)}%)</span>
-                                <span>-{currency}{results.commission}</span>
-                            </div>
-                            {calcFulfill === 'velora' && (
-                                <div className="flex justify-between items-center text-red-500/80">
-                                    <span>Velora Fulfillment Fee</span>
-                                    <span>-{currency}{results.fee}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="pt-6 border-t border-gray-200 dark:border-zinc-700/50 flex justify-between items-end">
-                            <div>
-                                <p className="text-sm text-gray-500 uppercase tracking-widest font-bold">Your Profit</p>
-                                <p className="text-xs text-gray-400 mt-1">per unit sold</p>
-                            </div>
-                            <p className="text-4xl sm:text-5xl font-extrabold text-[#6a329f] dark:text-[#f1c232]">
-                                {currency}{results.profit}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </SectionBlock>
 
             <SectionBlock title={t("sell.tools_title", "Powerful Tools to Grow")}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { OrderItem } from '@/types/domain';
 
 export interface Order {
     id: number;
@@ -7,7 +8,7 @@ export interface Order {
     totalAmount: number;
     currencyCode: string;
     createdAt: string;
-    items?: any[];
+    items?: OrderItem[];
 }
 
 export function useOrdersQuery() {
