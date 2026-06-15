@@ -186,7 +186,43 @@ class SellerController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data'   => ['payouts' => $payouts, 'summary' => $summary],
+            'data'   => ['payouts' => $payouts, 'summary' => $summary, 'stripe_account_id' => $profile->stripe_account_id],
+        ]);
+    }
+
+    public function onboardStripe(Request $request): JsonResponse
+    {
+        $profile = $this->getSellerProfile($request);
+
+        $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+        // Create a Connect account if the seller doesn't have one
+        if (!$profile->stripe_account_id) {
+            $account = $stripe->accounts->create([
+                'type' => 'express',
+                'email' => $request->user()->email,
+                'business_type' => 'company',
+                'company' => [
+                    'name' => $profile->company_name,
+                ],
+            ]);
+
+            $profile->update(['stripe_account_id' => $account->id]);
+        }
+
+        // Create an account link for onboarding
+        $accountLink = $stripe->accountLinks->create([
+            'account' => $profile->stripe_account_id,
+            'refresh_url' => config('app.url') . '/seller/payouts?refresh=true',
+            'return_url' => config('app.url') . '/seller/payouts?success=true',
+            'type' => 'account_onboarding',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'url' => $accountLink->url,
+            ],
         ]);
     }
 }

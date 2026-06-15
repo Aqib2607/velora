@@ -4,13 +4,15 @@ namespace App\Models;
 
 use App\Models\Traits\HasTenantScope;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Product extends Model
 {
-    use HasTenantScope, SoftDeletes;
+    use HasTenantScope, SoftDeletes, HasFactory;
 
     protected $fillable = [
         'tenant_id',
@@ -50,7 +52,17 @@ class Product extends Model
         return $this->hasMany(Sku::class);
     }
 
-    public function scopeActive($query)
+    public function options(): HasMany
+    {
+        return $this->hasMany(ProductOption::class)->orderBy('position');
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
     }

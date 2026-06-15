@@ -161,5 +161,8 @@ class DatabaseSeeder extends Seeder
 
         // Reset tenant binding
         app()->instance('tenant', null);
+
+        // Run Marketplace Population
+        $this->call(MarketplaceSeeder::class);
     }
 }

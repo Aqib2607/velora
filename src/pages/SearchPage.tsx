@@ -13,6 +13,9 @@ const SearchPage = () => {
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const [lastPage, setLastPage] = useState(1);
 
   // Local filter states
   const [minPrice, setMinPrice] = useState(searchParams.get("min_price") || "");
@@ -22,16 +25,21 @@ const SearchPage = () => {
 
   useEffect(() => {
     const fetchResults = async () => {
-      setLoading(true);
+      if (page === 1) setLoading(true);
       try {
         const qs = searchParams.toString();
-        // Since we don't have openSearch right now, this hits the backend controller we built
-        const res = await api.get<{ data: { data: Product[] } }>(`/search?${qs}`);
-        // If the backend isn't returning data correctly due to DB connection, fallback to empty
-        setResults(res.data?.data?.data || []);
+        const res = await api.get<any>(`/search?${qs}`);
+        const newResults = res.data?.data?.results || [];
+        setLastPage(res.data?.data?.last_page || 1);
+        
+        if (page === 1) {
+          setResults(newResults);
+        } else {
+          setResults(prev => [...prev, ...newResults]);
+        }
       } catch (error) {
         console.error("Search failed:", error);
-        setResults([]);
+        if (page === 1) setResults([]);
       } finally {
         setLoading(false);
       }
@@ -45,6 +53,7 @@ const SearchPage = () => {
     if (maxPrice) newParams.set("max_price", maxPrice); else newParams.delete("max_price");
     if (rating) newParams.set("rating", rating); else newParams.delete("rating");
     newParams.set("sort", sort);
+    newParams.delete("page"); // Reset to page 1 on filter
     setSearchParams(newParams);
     setIsFilterOpen(false);
   };
@@ -177,7 +186,7 @@ const SearchPage = () => {
             variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
           >
             {results.map((product, i) => (
-              <PremiumProductCard key={product.id} product={product} index={i} />
+              <PremiumProductCard key={`${product.id}-${i}`} product={product} index={i} />
             ))}
           </motion.div>
         ) : (
@@ -192,6 +201,21 @@ const SearchPage = () => {
             <h2 className="font-display text-xl font-bold mb-2">No results found</h2>
             <p className="text-muted-foreground max-w-md mx-auto">Try checking your spelling or using more general terms.</p>
           </motion.div>
+        )}
+
+        {page < lastPage && (
+          <div className="mt-12 flex justify-center">
+            <button 
+              onClick={() => {
+                const newParams = new URLSearchParams(searchParams);
+                newParams.set("page", (page + 1).toString());
+                setSearchParams(newParams);
+              }}
+              className="px-8 py-3 rounded-xl border border-border bg-card font-semibold hover:bg-muted/50 transition-all"
+            >
+              Load More
+            </button>
+          </div>
         )}
       </main>
     </div>

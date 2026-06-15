@@ -27,6 +27,10 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\MetricsController;
+use App\Http\Controllers\HomepageController;
+use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\CouponController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -68,6 +72,7 @@ Route::prefix('v1')->middleware(['resolve.tenant', 'throttle:api'])->group(funct
 
     // Catalog (Public browse — no auth required)
     Route::middleware('cache.api')->group(function () {
+        Route::get('homepage',                    [HomepageController::class, 'index']);
         Route::get('catalog/products',            [ProductController::class, 'index']);
         Route::get('catalog/products/{product}',  [ProductController::class, 'show']);
         Route::get('catalog/categories',          [CategoryController::class, 'index']);
@@ -102,9 +107,14 @@ Route::prefix('v1')->middleware([
     'throttle:api',
 ])->group(function () {
 
-    // ── Auth
+    // ── Auth & Profile
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me',      [AuthController::class, 'me']);
+    
+    Route::prefix('profile')->group(function () {
+        Route::post('/',                 [UserController::class, 'updateProfile']);
+        Route::post('/change-password',  [UserController::class, 'changePassword']);
+    });
 
     // ── Catalog — write operations (authenticated)
     Route::prefix('catalog')->group(function () {
@@ -124,6 +134,14 @@ Route::prefix('v1')->middleware([
         Route::put('items/{item}',    [CartController::class, 'updateItem']);
         Route::delete('items/{item}', [CartController::class, 'removeItem']);
         Route::delete('/',            [CartController::class, 'clear']);
+        Route::post('coupon',         [CouponController::class, 'validateCoupon']);
+    });
+
+    // ── Wishlist
+    Route::prefix('wishlist')->group(function () {
+        Route::get('/',               [WishlistController::class, 'index']);
+        Route::post('/',              [WishlistController::class, 'store']);
+        Route::delete('/{product}',   [WishlistController::class, 'destroy']);
     });
 
     // ── Orders
@@ -208,6 +226,15 @@ Route::prefix('v1')->middleware([
     // ── Admin (RBAC enforced inside controller)
     Route::prefix('admin')->group(function () {
         Route::get('users',                              [AdminController::class, 'users']);
+        Route::post('users/{user}/suspend',              [AdminController::class, 'suspendUser']);
+        Route::post('users/{user}/ban',                  [AdminController::class, 'banUser']);
+
+        Route::get('products',                           [AdminController::class, 'products']);
+        Route::post('products/{product}/suspend',        [AdminController::class, 'suspendProduct']);
+        Route::delete('products/{product}',              [AdminController::class, 'deleteProduct']);
+
+        Route::get('refunds',                            [AdminController::class, 'refunds']);
+
         Route::get('orders',                             [AdminController::class, 'orders']);
         Route::get('reports',                            [AdminController::class, 'reports']);
         Route::get('audit-logs',                         [AdminController::class, 'auditLogs']);
@@ -235,6 +262,7 @@ Route::prefix('v1')->middleware([
         Route::get('products', [SellerController::class, 'products']);
         Route::get('orders',   [SellerController::class, 'orders']);
         Route::get('payouts',  [SellerController::class, 'payouts']);
+        Route::post('stripe/onboard', [SellerController::class, 'onboardStripe']);
 
         // Seller analytics & reports
         Route::prefix('analytics')->group(function () {

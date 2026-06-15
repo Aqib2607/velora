@@ -27,6 +27,11 @@ const OrdersPage         = lazy(() => import("@/pages/OrdersPage"));
 const OrderDetailPage    = lazy(() => import("@/pages/OrderDetailPage"));
 const NotFound           = lazy(() => import("@/pages/NotFound"));
 const TodaysDealsPage    = lazy(() => import("@/pages/TodaysDealsPage"));
+const WishlistPage       = lazy(() => import("@/pages/WishlistPage"));
+const ProfilePage        = lazy(() => import("@/pages/ProfilePage"));
+const SettingsPage       = lazy(() => import("@/pages/SettingsPage"));
+const NotificationsPage  = lazy(() => import("@/pages/NotificationsPage"));
+const SupportPage        = lazy(() => import("@/pages/SupportPage"));
 
 // Corporate / Info Pages (14 Core)
 const Careers            = lazy(() => import("@/pages/info/Careers"));
@@ -39,7 +44,7 @@ const SellPage           = lazy(() => import("@/pages/info/SellPage"));
 const SellBusiness       = lazy(() => import("@/pages/info/SellBusiness"));
 const CustomerServicePage= lazy(() => import("@/pages/info/CustomerServicePage"));
 const RegistryPage       = lazy(() => import("@/pages/info/RegistryPage"));
-const GiftCardsPage      = lazy(() => import("@/pages/info/GiftCardsPage"));
+const GiftCardsPage      = lazy(() => import("@/pages/GiftCardPage"));
 const Advertise          = lazy(() => import("@/pages/info/Advertise"));
 const Affiliate          = lazy(() => import("@/pages/info/Affiliate"));
 const SelfPublish        = lazy(() => import("@/pages/info/SelfPublish"));
@@ -89,7 +94,10 @@ const AdminOrders        = lazy(() => import("@/pages/admin/AdminOrders"));
 const AdminCommission    = lazy(() => import("@/pages/admin/AdminCommission"));
 const AdminAuditLogs     = lazy(() => import("@/pages/admin/AdminAuditLogs"));
 const AdminTenants       = lazy(() => import("@/pages/admin/AdminTenants"));
-
+const AdminProducts      = lazy(() => import("@/pages/admin/AdminProducts"));
+const AdminUsers         = lazy(() => import("@/pages/admin/AdminUsers"));
+const AdminRefunds       = lazy(() => import("@/pages/admin/AdminRefunds"));
+const AdminReports       = lazy(() => import("@/pages/admin/AdminReports"));
 
 export const AppRouter = () => {
     return (
@@ -110,6 +118,11 @@ export const AppRouter = () => {
                         <Route path="orders"         element={<OrdersPage />} />
                         <Route path="orders/:id"     element={<OrderDetailPage />} />
                         <Route path="deals"          element={<TodaysDealsPage />} />
+                        <Route path="wishlist"       element={<WishlistPage />} />
+                        <Route path="profile"        element={<ProfilePage />} />
+                        <Route path="settings"       element={<SettingsPage />} />
+                        <Route path="notifications"  element={<NotificationsPage />} />
+                        <Route path="support"        element={<SupportPage />} />
 
                         {/* Info & Legal */}
                         <Route path="careers"          element={<Careers />} />
@@ -186,11 +199,15 @@ export const AppRouter = () => {
                     {/* ── Secure Admin Area ──────────── */}
                     <Route element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
                         <Route path="admin/dashboard"  element={<AdminDashboard />} />
+                        <Route path="admin/users"      element={<AdminUsers />} />
+                        <Route path="admin/products"   element={<AdminProducts />} />
                         <Route path="admin/sellers"    element={<AdminSellers />} />
                         <Route path="admin/orders"     element={<AdminOrders />} />
+                        <Route path="admin/refunds"    element={<AdminRefunds />} />
                         <Route path="admin/commission" element={<AdminCommission />} />
                         <Route path="admin/audit-logs" element={<AdminAuditLogs />} />
                         <Route path="admin/tenants"    element={<AdminTenants />} />
+                        <Route path="admin/reports"    element={<AdminReports />} />
                     </Route>
 
                     {/* ── 404 ──────────────────────── */}

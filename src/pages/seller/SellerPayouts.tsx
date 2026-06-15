@@ -1,7 +1,7 @@
 import { Archive, DollarSign, Clock } from "lucide-react";
 import { useRegionStore } from "@/store/useRegionStore";
 import { convertAndFormat } from "@/utils/currency";
-import { useSellerPayouts, type SellerPayout } from "@/hooks/useSellerDashboard";
+import { useSellerPayouts, useOnboardStripe, type SellerPayout } from "@/hooks/useSellerDashboard";
 import { formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
 
@@ -25,9 +25,11 @@ const SkeletonRow = ({ cols }: { cols: number }) => (
 export const SellerPayouts = () => {
     const { currency, locale }         = useRegionStore();
     const { data, isLoading, isError } = useSellerPayouts();
+    const onboardStripe                = useOnboardStripe();
 
     const payouts: SellerPayout[] = data?.payouts?.data ?? [];
     const summary = data?.summary;
+    const isStripeConnected = !!data?.stripe_account_id;
 
     return (
         <div className="p-6 lg:p-8 space-y-6">
@@ -48,7 +50,25 @@ export const SellerPayouts = () => {
                         <div key={i} className="h-28 rounded-2xl border border-border bg-card animate-pulse" />
                     ))}
                 </div>
-            ) : summary && (
+            ) : !isStripeConnected ? (
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl border border-border bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-8 flex flex-col sm:flex-row items-center justify-between gap-6"
+                >
+                    <div>
+                        <h2 className="font-display font-bold text-xl mb-2">Connect Stripe to receive payouts</h2>
+                        <p className="text-muted-foreground text-sm max-w-md">Velora uses Stripe to get you paid quickly and securely. You need to set up a Stripe Express account to start receiving your earnings.</p>
+                    </div>
+                    <button
+                        onClick={() => onboardStripe.mutate()}
+                        disabled={onboardStripe.isPending}
+                        className="whitespace-nowrap rounded-xl bg-indigo-600 px-8 py-3.5 font-bold text-white shadow-sm hover:bg-indigo-700 hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {onboardStripe.isPending ? "Generating link..." : "Set up Stripe Express"}
+                    </button>
+                </motion.div>
+            ) : summary ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <motion.div
                         initial={{ opacity: 0, y: 16 }}
@@ -78,7 +98,7 @@ export const SellerPayouts = () => {
                         <p className="text-sm text-muted-foreground mt-1">Pending</p>
                     </motion.div>
                 </div>
-            )}
+            ) : null}
 
             <motion.div
                 initial={{ opacity: 0, y: 16 }}

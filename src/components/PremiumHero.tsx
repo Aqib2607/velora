@@ -29,7 +29,7 @@ const PremiumHero = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
-            Velora Architecture V3
+            Velora Infrastructure V6
           </span>
         </motion.div>
 
@@ -40,7 +40,7 @@ const PremiumHero = () => {
           transition={{ duration: 1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="font-display text-[clamp(3.5rem,8vw,8rem)] font-bold tracking-tighter leading-[0.95] text-foreground max-w-6xl mx-auto mb-10"
         >
-          The standard for <br className="hidden md:block" />
+          The financial infrastructure for <br className="hidden md:block" />
           <span className="text-neutral-400 dark:text-neutral-600">global commerce.</span>
         </motion.h1>
 
@@ -51,7 +51,7 @@ const PremiumHero = () => {
           transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="text-[clamp(1.125rem,2vw,1.5rem)] text-neutral-500 dark:text-neutral-400 max-w-3xl mx-auto mb-16 leading-relaxed font-medium"
         >
-          A meticulously crafted platform designed to elevate premium brands. Experience borderless trade with unparalleled design, speed, and reliability.
+          A high-performance marketplace engine engineered for enterprise brands. Scale globally with institutional-grade security, instant settlements, and a curated network of elite buyers.
         </motion.p>
 
         {/* CTA Buttons (High Contrast, Flat) */}
@@ -63,13 +63,13 @@ const PremiumHero = () => {
         >
           <Link to="/search" className="w-full sm:w-auto">
             <button className="w-full sm:w-auto group relative flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-foreground text-background font-semibold text-lg tracking-wide hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
-              Explore Collection
+              Explore the Network
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </button>
           </Link>
           <Link to="/sell" className="w-full sm:w-auto">
             <button className="w-full sm:w-auto px-8 py-4 rounded-xl bg-transparent text-foreground border border-neutral-200 dark:border-neutral-800 font-semibold text-lg tracking-wide hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-              Start Selling
+              Deploy your Store
             </button>
           </Link>
         </motion.div>

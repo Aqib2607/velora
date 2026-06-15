@@ -34,6 +34,32 @@ export interface AdminUser {
     roles     : { id: number; name: string }[];
 }
 
+export interface AdminProduct {
+    id: number;
+    name: string;
+    price: number;
+    status: string;
+    seller_profile: { company_name: string } | null;
+}
+
+export interface AdminRefund {
+    id: number;
+    amount: number;
+    reason: string | null;
+    status: string;
+    order: { order_number: string; user: { name: string } | null } | null;
+}
+
+export interface PaginatedResponse<T> {
+    status: string;
+    data: {
+        data: T[];
+        current_page: number;
+        last_page: number;
+        total: number;
+    };
+}
+
 export interface AuditLog {
     id        : number;
     user_id   : number;
@@ -89,9 +115,25 @@ export function useAdminOrders(filters?: { status?: string; search?: string; pag
 
 /** Paginated user list */
 export function useAdminUsers(filters?: { search?: string; status?: string; page?: number }) {
-    return useQuery({
+    return useQuery<PaginatedResponse<AdminUser>>({
         queryKey: ['admin', 'users', filters],
         queryFn : () => apiFetch('GET', '/v1/admin/users', undefined, filters as Record<string, string | number | boolean | undefined>),
+    });
+}
+
+/** Paginated products list */
+export function useAdminProducts(filters?: { search?: string; status?: string; page?: number }) {
+    return useQuery<PaginatedResponse<AdminProduct>>({
+        queryKey: ['admin', 'products', filters],
+        queryFn : () => apiFetch('GET', '/v1/admin/products', undefined, filters as Record<string, string | number | boolean | undefined>),
+    });
+}
+
+/** Paginated refunds list */
+export function useAdminRefunds(filters?: { status?: string; page?: number }) {
+    return useQuery<PaginatedResponse<AdminRefund>>({
+        queryKey: ['admin', 'refunds', filters],
+        queryFn : () => apiFetch('GET', '/v1/admin/refunds', undefined, filters as Record<string, string | number | boolean | undefined>),
     });
 }
 
@@ -195,5 +237,59 @@ export function useUpdateCommission() {
             toast.success('Commission rule updated successfully.');
         },
         onError: () => toast.error('Failed to update commission rule.'),
+    });
+}
+
+export function useSuspendProduct() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => apiFetch('POST', `/v1/admin/products/${id}/suspend`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'products'] }); toast.success('Product suspended.'); },
+        onError: () => toast.error('Failed to suspend product.'),
+    });
+}
+
+export function useDeleteProduct() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => apiFetch('DELETE', `/v1/admin/products/${id}`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'products'] }); toast.success('Product deleted.'); },
+        onError: () => toast.error('Failed to delete product.'),
+    });
+}
+
+export function useSuspendUser() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => apiFetch('POST', `/v1/admin/users/${id}/suspend`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success('User suspended.'); },
+        onError: () => toast.error('Failed to suspend user.'),
+    });
+}
+
+export function useBanUser() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => apiFetch('POST', `/v1/admin/users/${id}/ban`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success('User banned.'); },
+        onError: () => toast.error('Failed to ban user.'),
+    });
+}
+
+export function useApproveRefundAdmin() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => apiFetch('POST', `/v1/refunds/${id}/approve`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'refunds'] }); toast.success('Refund approved.'); },
+        onError: () => toast.error('Failed to approve refund.'),
+    });
+}
+
+export function useRejectRefundAdmin() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, reason }: { id: number, reason: string }) => apiFetch('POST', `/v1/refunds/${id}/reject`, { reason }),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'refunds'] }); toast.success('Refund rejected.'); },
+        onError: () => toast.error('Failed to reject refund.'),
     });
 }

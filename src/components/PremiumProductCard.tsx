@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 import { Product } from "@/types/domain";
+import { Heart } from "lucide-react";
+import { useWishlistQuery, useToggleWishlist } from "@/hooks/useWishlistQuery";
 
 interface PremiumProductCardProps {
   product: Product;
@@ -10,6 +12,10 @@ interface PremiumProductCardProps {
 }
 
 const PremiumProductCard = ({ product, index = 0 }: PremiumProductCardProps) => {
+  const { data: wishlist = [] } = useWishlistQuery();
+  const { mutate: toggleWishlist } = useToggleWishlist();
+  const isFav = wishlist.some(item => item.product_id === product.id);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 32 }}
@@ -29,8 +35,16 @@ const PremiumProductCard = ({ product, index = 0 }: PremiumProductCardProps) => 
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           />
 
-          {/* Badge */}
-          {/* Note: product.badge does not exist in domain Product. Let's just remove the badge or check attributes */}
+          {/* Wishlist Button */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              toggleWishlist({ productId: product.id, isWishlisted: isFav });
+            }}
+            className="absolute top-3 right-3 p-2.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors z-10"
+          >
+            <Heart className={`h-4 w-4 transition-colors ${isFav ? 'fill-red-500 text-red-500' : 'text-foreground'}`} />
+          </button>
         </div>
 
         {/* Content */}

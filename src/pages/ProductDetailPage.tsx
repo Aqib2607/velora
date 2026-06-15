@@ -3,9 +3,13 @@ import { Star, ShoppingCart, ChevronRight, Minus, Plus, Heart, Shield, Truck, Ro
 import { useState } from "react";
 import { useProductsQuery } from "@/hooks/useProductsQuery";
 import { useAddToCart } from "@/hooks/useCartQuery";
+import { useNavigate } from "react-router-dom";
+import { useWishlistQuery, useToggleWishlist } from "@/hooks/useWishlistQuery";
 import { useRegionStore } from "@/store/useRegionStore";
 import { convertAndFormat } from "@/utils/currency";
 import ProductCard from "@/components/ProductCard";
+import VariantSelector from "@/components/VariantSelector";
+import { ProductVariant } from "@/types/domain";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ProductDetailPage = () => {
@@ -13,10 +17,15 @@ const ProductDetailPage = () => {
   const { data: products = [] } = useProductsQuery();
   const product = products.find((p) => String(p.id) === id);
   const { mutate: addToCart } = useAddToCart();
+  const navigate = useNavigate();
   const { currency, locale } = useRegionStore();
   const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState<"description" | "reviews">("description");
-  const [isFav, setIsFav] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+
+  const { data: wishlist = [] } = useWishlistQuery();
+  const { mutate: toggleWishlist } = useToggleWishlist();
+  const isFav = wishlist.some(item => item.product_id === product?.id);
 
   if (!product) {
     return (
@@ -33,6 +42,13 @@ const ProductDetailPage = () => {
   }
 
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
+
+  const currentPrice = selectedVariant?.sku?.price ? Number(selectedVariant.sku.price) : product.price;
+  const currentOriginalPrice = selectedVariant?.sku?.compare_price ? Number(selectedVariant.sku.compare_price) : product.originalPrice;
+  const currentImage = selectedVariant?.image_url || product.image;
+  // Fallback to variant's sku inventory, or sku default inventory, or 100
+  const currentStock = selectedVariant?.sku?.inventory?.quantity ?? product.stock;
+  const currentSkuId = selectedVariant?.sku_id || product.skus?.[0]?.id || product.id;
 
   return (
     <div className="container-premium py-8 lg:py-12">
@@ -55,7 +71,7 @@ const ProductDetailPage = () => {
         >
           <div className="aspect-square rounded-3xl overflow-hidden bg-muted/10 border border-border group">
             <motion.img
-              src={product.image}
+              src={currentImage}
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-smooth"
             />
@@ -79,7 +95,7 @@ const ProductDetailPage = () => {
                 className={`p-3 rounded-xl border ${isFav ? 'bg-red-500 border-red-500 text-white' : 'border-border hover:bg-muted/50'} transition-all`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setIsFav(!isFav)}
+                onClick={() => toggleWishlist({ productId: product.id, isWishlisted: isFav })}
               >
                 <Heart className={`h-5 w-5 ${isFav ? 'fill-current' : ''}`} />
               </motion.button>
@@ -106,23 +122,32 @@ const ProductDetailPage = () => {
 
           {/* Price */}
           <div className="flex items-baseline gap-3 mb-6">
-            <span className="text-4xl font-bold text-foreground">{convertAndFormat(product.price, currency, locale)}</span>
-            {product.originalPrice && (
+            <span className="text-4xl font-bold text-foreground">{convertAndFormat(currentPrice, currency, locale)}</span>
+            {currentOriginalPrice && currentPrice !== undefined && (
               <>
-                <span className="text-lg text-muted-foreground line-through">{convertAndFormat(product.originalPrice, currency, locale)}</span>
+                <span className="text-lg text-muted-foreground line-through">{convertAndFormat(currentOriginalPrice, currency, locale)}</span>
                 <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-bold">
-                  {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% off
+                  {Math.round(((currentOriginalPrice - currentPrice) / currentOriginalPrice) * 100)}% off
                 </span>
               </>
             )}
           </div>
 
+          {/* Variants */}
+          {product.options && product.options.length > 0 && product.variants && (
+            <VariantSelector 
+              options={product.options} 
+              variants={product.variants} 
+              onVariantChange={setSelectedVariant} 
+            />
+          )}
+
           {/* Stock */}
           <div className="mb-8">
-            {product.stock > 0 ? (
+            {currentStock > 0 ? (
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 bg-green-500 rounded-full animate-pulse-subtle" />
-                <span className="text-sm text-green-600 dark:text-green-400 font-semibold">In Stock ({product.stock} available)</span>
+                <span className="text-sm text-green-600 dark:text-green-400 font-semibold">In Stock ({currentStock} available)</span>
               </div>
             ) : (
               <span className="text-sm text-destructive font-semibold">Out of Stock</span>
@@ -154,15 +179,22 @@ const ProductDetailPage = () => {
           {/* CTA */}
           <div className="flex gap-3 mb-8">
             <motion.button
-              onClick={() => addToCart({ sku_id: product.skus?.[0]?.id || product.id, quantity: qty })}
-              className="flex-1 flex items-center justify-center gap-2.5 rounded-2xl bg-foreground px-6 py-4 font-semibold text-background shadow-sm hover:-translate-y-0.5 transition-all duration-300"
+              onClick={() => addToCart({ sku_id: currentSkuId, quantity: qty })}
+              disabled={currentStock <= 0}
+              className="flex-1 flex items-center justify-center gap-2.5 rounded-2xl bg-foreground px-6 py-4 font-semibold text-background shadow-sm hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
               <ShoppingCart className="h-5 w-5" /> Add to Cart
             </motion.button>
             <motion.button
-              className="flex-1 rounded-2xl bg-foreground text-background px-6 py-4 font-semibold hover:opacity-90 transition-opacity"
+              onClick={() => {
+                addToCart({ sku_id: currentSkuId, quantity: qty }, {
+                  onSuccess: () => navigate('/checkout')
+                });
+              }}
+              disabled={currentStock <= 0}
+              className="flex-1 rounded-2xl bg-foreground text-background px-6 py-4 font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >

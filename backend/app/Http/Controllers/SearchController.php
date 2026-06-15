@@ -56,6 +56,8 @@ class SearchController extends Controller
             'data' => [
                 'results' => $results['hits'] ?? [],
                 'total' => $results['total'] ?? 0,
+                'current_page' => $results['current_page'] ?? 1,
+                'last_page' => $results['last_page'] ?? 1,
                 'source' => $results['source'] ?? 'unknown',
                 'facets' => $results['facets'] ?? [],
             ],

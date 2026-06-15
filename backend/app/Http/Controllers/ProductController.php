@@ -12,7 +12,7 @@ class ProductController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $products = Product::with(['category', 'skus.inventory'])
+        $products = Product::with(['category', 'skus.inventory', 'options.values', 'variants.optionValues', 'variants.inventory'])
             ->active()
             ->when($request->category_id, fn($q, $c) => $q->where('category_id', $c))
             ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%{$s}%"))
@@ -25,7 +25,7 @@ class ProductController extends Controller
     {
         return response()->json([
             'status' => 'success',
-            'data'   => $product->load(['category', 'skus.inventory', 'sellerProfile']),
+            'data'   => $product->load(['category', 'skus.inventory', 'sellerProfile', 'options.values', 'variants.optionValues', 'variants.inventory']),
         ]);
     }
 

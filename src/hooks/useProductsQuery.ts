@@ -34,9 +34,11 @@ export function useProductsQuery(filters?: Record<string, string | number | bool
                     seller: sell || 'Velora Partner',
                     status: p.status || 'active',
                     stock: defaultSku.inventory?.quantity || 100,
-                    rating: 4.8,
-                    reviewCount: 124,
-                    skus: p.skus
+                    rating: Number(p.attributes?.rating) || 5.0,
+                    reviewCount: Number(p.attributes?.reviewCount) || 0,
+                    skus: p.skus,
+                    options: p.options || [],
+                    variants: p.variants || [],
                 } as Product;
             });
         },

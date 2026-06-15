@@ -57,6 +57,8 @@ class EnhancedSearchService
                 'source' => 'opensearch',
                 'hits' => $results['hits']['hits'] ?? [],
                 'total' => $results['hits']['total']['value'] ?? 0,
+                'current_page' => $params['page'] ?? 1,
+                'last_page' => ceil(($results['hits']['total']['value'] ?? 0) / ($params['per_page'] ?? 24)),
                 'facets' => $this->extractFacets($results),
             ];
         } catch (\Exception $e) {
@@ -229,6 +231,8 @@ class EnhancedSearchService
             'source' => 'database',
             'hits' => $results->items(),
             'total' => $results->total(),
+            'current_page' => $results->currentPage(),
+            'last_page' => $results->lastPage(),
             'facets' => [],
         ];
     }

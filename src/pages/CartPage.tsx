@@ -8,6 +8,8 @@ import { convertAndFormat } from "@/utils/currency";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Product } from "@/hooks/useProductsQuery";
+import { useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 type GuestCartItem = { product: Product; quantity: number };
 
@@ -32,6 +34,24 @@ const CartPage = () => {
   const { currency, locale } = useRegionStore();
   const taxRate = 0.08;
   const { t } = useTranslation();
+
+  const [couponCode, setCouponCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [couponError, setCouponError] = useState("");
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCouponError("");
+    try {
+      const res = await apiFetch('POST', '/v1/cart/coupon', { code: couponCode, order_value: totalInUSD });
+      if (res.data) {
+        setDiscount(res.data.type === 'percentage' ? (totalInUSD * (res.data.value / 100)) : res.data.value);
+      }
+    } catch (err: any) {
+      setCouponError(err.message || "Invalid coupon");
+      setDiscount(0);
+    }
+  };
 
   const handleRemove = (itemId: number, skuId?: number) => {
     if (isAuth) {
@@ -161,12 +181,28 @@ const CartPage = () => {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">{t('cart.subtotal')}</span><span className="font-semibold">{convertAndFormat(totalInUSD, currency, locale)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">{t('cart.shipping')}</span><span className="font-semibold text-green-600">{totalInUSD > 50 ? t('cart.free') : convertAndFormat(5.99, currency, locale)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">{t('cart.tax')} ({Math.round(taxRate * 100)}%)</span><span className="font-semibold">{convertAndFormat(totalInUSD * taxRate, currency, locale)}</span></div>
+              {discount > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Discount</span><span className="font-semibold text-green-600">-{convertAndFormat(discount, currency, locale)}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('cart.tax')} ({Math.round(taxRate * 100)}%)</span><span className="font-semibold">{convertAndFormat(Math.max(0, totalInUSD - discount) * taxRate, currency, locale)}</span></div>
             </div>
+            
+            <form onSubmit={handleApplyCoupon} className="mt-5">
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Coupon Code" 
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:border-foreground uppercase" 
+                />
+                <button type="submit" className="px-4 py-2 bg-muted text-muted-foreground hover:bg-foreground hover:text-background rounded-xl text-sm font-semibold transition-colors">Apply</button>
+              </div>
+              {couponError && <p className="text-xs text-red-500 mt-2">{couponError}</p>}
+            </form>
+
             <div className="divider-gradient my-5" />
             <div className="flex justify-between font-bold text-xl mb-6">
               <span>{t('cart.total')}</span>
-              <span className="text-foreground">{convertAndFormat(totalInUSD + (totalInUSD > 50 ? 0 : 5.99) + totalInUSD * taxRate, currency, locale)}</span>
+              <span className="text-foreground">{convertAndFormat(Math.max(0, totalInUSD - discount) + (totalInUSD > 50 ? 0 : 5.99) + Math.max(0, totalInUSD - discount) * taxRate, currency, locale)}</span>
             </div>
             <Link
               to="/checkout"

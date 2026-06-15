@@ -50,6 +50,7 @@ export interface SellerPayout {
 export interface SellerPayoutResponse {
     payouts: { data: SellerPayout[] };
     summary: { total_paid: number; total_pending: number };
+    stripe_account_id: string | null;
 }
 
 export interface SellerAnalytics {
@@ -173,5 +174,17 @@ export function useRejectRefund() {
         mutationFn: (id: number) => apiFetch('POST', `/v1/refunds/${id}/reject`),
         onSuccess : () => { qc.invalidateQueries({ queryKey: ['seller', 'refunds'] }); toast.success('Refund rejected.'); },
         onError   : () => toast.error('Failed to reject refund.'),
+    });
+}
+
+export function useOnboardStripe() {
+    return useMutation({
+        mutationFn: () => apiFetch<{ url: string }>('POST', '/v1/seller-dashboard/stripe/onboard'),
+        onSuccess : (data) => {
+            if (data?.url) {
+                window.location.href = data.url;
+            }
+        },
+        onError   : () => toast.error('Failed to generate Stripe onboarding link.'),
     });
 }

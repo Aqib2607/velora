@@ -44,6 +44,63 @@ class AdminController extends Controller
         return response()->json(['status' => 'success', 'data' => $users]);
     }
 
+    public function suspendUser(Request $request, User $user): JsonResponse
+    {
+        $this->assertAdmin();
+        $user->update(['status' => 'suspended']);
+        return response()->json(['status' => 'success', 'data' => ['message' => 'User suspended.']]);
+    }
+
+    public function banUser(Request $request, User $user): JsonResponse
+    {
+        $this->assertAdmin();
+        $user->update(['status' => 'banned']);
+        return response()->json(['status' => 'success', 'data' => ['message' => 'User banned.']]);
+    }
+
+    // ── Products ───────────────────────────────────────────
+
+    public function products(Request $request): JsonResponse
+    {
+        $this->assertAdmin();
+
+        $products = \App\Models\Product::with('sellerProfile.user', 'category')
+            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
+            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+            ->orderByDesc('created_at')
+            ->paginate(25);
+
+        return response()->json(['status' => 'success', 'data' => $products]);
+    }
+
+    public function suspendProduct(Request $request, \App\Models\Product $product): JsonResponse
+    {
+        $this->assertAdmin();
+        $product->update(['status' => 'archived']);
+        return response()->json(['status' => 'success', 'data' => ['message' => 'Product suspended.']]);
+    }
+
+    public function deleteProduct(Request $request, \App\Models\Product $product): JsonResponse
+    {
+        $this->assertAdmin();
+        $product->delete();
+        return response()->json(['status' => 'success', 'data' => ['message' => 'Product deleted.']]);
+    }
+
+    // ── Refunds ────────────────────────────────────────────
+
+    public function refunds(Request $request): JsonResponse
+    {
+        $this->assertAdmin();
+
+        $refunds = \App\Models\Refund::with('order.user')
+            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+            ->orderByDesc('created_at')
+            ->paginate(25);
+
+        return response()->json(['status' => 'success', 'data' => $refunds]);
+    }
+
     // ── Orders ─────────────────────────────────────────────
 
     public function orders(Request $request): JsonResponse

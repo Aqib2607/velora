@@ -17,6 +17,7 @@ return new class extends Migration
     {
         Schema::table('ledger_entries', function (Blueprint $table) {
             $table->string('currency', 3)->default('USD')->after('amount');
+            $table->decimal('exchange_rate', 10, 4)->default(1.0000)->after('currency');
         });
 
         // Add check constraint if using MySQL 8.0.16+
@@ -40,7 +41,7 @@ return new class extends Migration
         }
 
         Schema::table('ledger_entries', function (Blueprint $table) {
-            $table->dropColumn('currency');
+            $table->dropColumn(['currency', 'exchange_rate']);
         });
     }
 };

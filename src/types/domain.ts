@@ -50,6 +50,33 @@ export interface Product {
   rating?: number;
   reviews?: number;
   image?: string;
+  options?: ProductOption[];
+  variants?: ProductVariant[];
+}
+
+export interface ProductOptionValue {
+  id: number;
+  product_option_id: number;
+  value: string;
+  position: number;
+}
+
+export interface ProductOption {
+  id: number;
+  product_id: number;
+  name: string;
+  position: number;
+  values?: ProductOptionValue[];
+}
+
+export interface ProductVariant {
+  id: number;
+  product_id: number;
+  sku_id: number;
+  title?: string;
+  image_url?: string;
+  sku?: Sku;
+  optionValues?: ProductOptionValue[];
 }
 
 export interface Sku {

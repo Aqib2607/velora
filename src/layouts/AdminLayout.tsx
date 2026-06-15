@@ -1,7 +1,8 @@
 import { Outlet, Link, NavLink, useLocation } from "react-router-dom";
 import {
     BarChart3, Users, DollarSign, Settings, ShoppingCart, Menu, X,
-    Home, Shield, ChevronLeft, FileText, Building2, Activity
+    Home, Shield, ChevronLeft, FileText, Building2, Activity,
+    Package, RefreshCcw
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -9,8 +10,11 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
     { icon: Home, label: "Dashboard", to: "/admin/dashboard" },
+    { icon: Users, label: "Users", to: "/admin/users" },
+    { icon: Package, label: "Products", to: "/admin/products" },
     { icon: Users, label: "Sellers", to: "/admin/sellers" },
     { icon: ShoppingCart, label: "Orders", to: "/admin/orders" },
+    { icon: RefreshCcw, label: "Refunds", to: "/admin/refunds" },
     { icon: DollarSign, label: "Commission", to: "/admin/commission" },
     { icon: FileText, label: "Audit Logs", to: "/admin/audit-logs" },
     { icon: Building2, label: "Tenants", to: "/admin/tenants" },
